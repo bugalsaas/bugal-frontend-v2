@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { shiftsApi, mockShiftsResponse, Shift, ShiftFilters, ShiftListResponse, ShiftStatus } from '@/lib/api/shifts-service';
+import { shiftsApi, Shift, ShiftFilters, ShiftListResponse, ShiftStatus } from '@/lib/api/shifts-service';
 
 export interface UseShiftsOptions {
   defaultFilters?: ShiftFilters;
@@ -28,7 +28,7 @@ export function useShifts(options: UseShiftsOptions = {}) {
     after: options.defaultFilters?.after,
   });
 
-  const { isDevelopmentMode, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const loadShifts = useCallback(async () => {
     setLoading(true);
@@ -51,66 +51,19 @@ export function useShifts(options: UseShiftsOptions = {}) {
       const counter = [diffStatus, diffAssignee, diffContact, diffBefore, diffAfter].filter(Boolean).length;
       setFilterCounter(counter);
 
-      let response: ShiftListResponse;
-
-      // Always use mock data for now to ensure we can test the UI
-      console.log('Using mock shifts data for testing');
-      response = mockShiftsResponse;
-      
-      // Apply client-side filtering for mock data
-      let filteredData = [...mockShiftsResponse.data];
-      
-      if (filter.status && filter.status !== ShiftStatus.All) {
-        filteredData = filteredData.filter(shift => shift.shiftStatus === filter.status);
-      }
-      
-      if (filter.assignee && filter.assignee !== '-1') {
-        filteredData = filteredData.filter(shift => shift.idAssignee === filter.assignee);
-      }
-      
-      if (filter.contact) {
-        filteredData = filteredData.filter(shift => 
-          shift.contact.fullName.toLowerCase().includes(filter.contact!.toLowerCase()) ||
-          shift.contact.email?.toLowerCase().includes(filter.contact!.toLowerCase())
-        );
-      }
-      
-      if (filter.before) {
-        const beforeDate = new Date(filter.before);
-        filteredData = filteredData.filter(shift => new Date(shift.startDate) <= beforeDate);
-      }
-      
-      if (filter.after) {
-        const afterDate = new Date(filter.after);
-        filteredData = filteredData.filter(shift => new Date(shift.startDate) >= afterDate);
-      }
-      
-      response = {
-        data: filteredData,
-        meta: {
-          total: filteredData.length,
-          pageNumber: pagination.pageNumber,
-          pageSize: pagination.pageSize,
-          hasMoreAfter: false,
-          hasMoreBefore: false,
-        },
-      };
+      const response = await shiftsApi.getAll(filters);
 
       setData(response.data);
       setTotal(response.meta.total);
     } catch (error) {
       console.error('Shifts fetch error:', error);
-      
-      // Fallback to mock data on API error
-      console.log('API error, falling back to mock data');
-      setData(mockShiftsResponse.data);
-      setTotal(mockShiftsResponse.meta.total);
-      
       setError(error instanceof Error ? error.message : 'Failed to load shifts');
+      setData([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, isDevelopmentMode, filter, pagination]);
+  }, [filter, pagination]);
 
   useEffect(() => {
     loadShifts();
