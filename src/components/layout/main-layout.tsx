@@ -291,9 +291,14 @@ export function MainLayout({
         <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">B</span>
-              </div>
+              <Image
+                src="/logo-color.png"
+                alt="Bugal Logo"
+                width={80}
+                height={24}
+                className="object-contain"
+                priority
+              />
               <h1 className="text-lg font-semibold text-gray-900">{headerConfig.title}</h1>
             </div>
             <div className="flex items-center space-x-2">
