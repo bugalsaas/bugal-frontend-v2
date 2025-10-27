@@ -294,8 +294,8 @@ export function MainLayout({
               <Image
                 src="/logo-color.png"
                 alt="Bugal Logo"
-                width={60}
-                height={18}
+                width={40}
+                height={12}
                 className="object-contain"
                 priority
               />
