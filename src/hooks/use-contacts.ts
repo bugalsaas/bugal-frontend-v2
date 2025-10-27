@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { contactsApi, mockContactsResponse, Contact, ContactFilters, ContactListResponse, ContactType, ContactStatus } from '@/lib/api/contacts-service';
+import { contactsApi, Contact, ContactFilters, ContactListResponse, ContactType, ContactStatus } from '@/lib/api/contacts-service';
 
 export interface UseContactsOptions {
   defaultFilters?: ContactFilters;
@@ -26,8 +26,6 @@ export function useContacts(options: UseContactsOptions = {}) {
     status: options.defaultFilters?.status,
   });
 
-  const { isDevelopmentMode, isAuthenticated } = useAuth();
-
   const loadContacts = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -47,56 +45,19 @@ export function useContacts(options: UseContactsOptions = {}) {
       const counter = [diffType, diffSearch, diffStatus].filter(Boolean).length;
       setFilterCounter(counter);
 
-      let response: ContactListResponse;
-
-      // Always use mock data for now to ensure we can test the UI
-      console.log('Using mock contacts data for testing');
-      response = mockContactsResponse;
-      
-      // Apply client-side filtering for mock data
-      let filteredData = [...mockContactsResponse.data];
-      
-      if (filter.type && filter.type !== ContactType.All) {
-        filteredData = filteredData.filter(contact => contact.contactType === filter.type);
-      }
-      
-      if (filter.search) {
-        const searchLower = filter.search.toLowerCase();
-        filteredData = filteredData.filter(contact => 
-          contact.fullName.toLowerCase().includes(searchLower) ||
-          contact.email?.toLowerCase().includes(searchLower) ||
-          contact.phone?.includes(filter.search)
-        );
-      }
-      
-      if (filter.status) {
-        filteredData = filteredData.filter(contact => contact.status === filter.status);
-      }
-      
-      response = {
-        data: filteredData,
-        meta: {
-          total: filteredData.length,
-          pageNumber: pagination.pageNumber,
-          pageSize: pagination.pageSize,
-        },
-      };
+      const response = await contactsApi.getAll(filters);
 
       setData(response.data);
       setTotal(response.meta.total);
     } catch (error) {
       console.error('Contacts fetch error:', error);
-      
-      // Fallback to mock data on API error
-      console.log('API error, falling back to mock data');
-      setData(mockContactsResponse.data);
-      setTotal(mockContactsResponse.meta.total);
-      
       setError(error instanceof Error ? error.message : 'Failed to load contacts');
+      setData([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, isDevelopmentMode, filter, pagination]);
+  }, [filter, pagination]);
 
   useEffect(() => {
     loadContacts();
@@ -133,23 +94,10 @@ export function useContactActions() {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
-  const { isDevelopmentMode } = useAuth();
-
   const createContact = async (contact: Omit<Contact, 'id' | 'createdAt' | 'updatedAt'>): Promise<Contact> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock creation
-        const newContact: Contact = {
-          ...contact,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        return newContact;
-      } else {
-        return await contactsApi.create(contact);
-      }
+      return await contactsApi.create(contact);
     } finally {
       setIsSaving(false);
     }
@@ -158,17 +106,7 @@ export function useContactActions() {
   const updateContact = async (id: string, contact: Partial<Contact>): Promise<Contact> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock update
-        const updatedContact: Contact = {
-          ...contact as Contact,
-          id,
-          updatedAt: new Date().toISOString(),
-        };
-        return updatedContact;
-      } else {
-        return await contactsApi.update(id, contact);
-      }
+      return await contactsApi.update(id, contact);
     } finally {
       setIsSaving(false);
     }
@@ -177,12 +115,7 @@ export function useContactActions() {
   const deleteContact = async (id: string): Promise<void> => {
     setIsDeleting(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock deletion
-        console.log('Mock delete contact:', id);
-      } else {
-        await contactsApi.delete(id);
-      }
+      await contactsApi.delete(id);
     } finally {
       setIsDeleting(false);
     }
