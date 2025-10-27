@@ -44,17 +44,10 @@ export const navigationItems: NavigationItem[] = [
     badge: null 
   },
   { 
-    id: 'shifts', 
-    label: 'Shifts', 
-    icon: Calendar, 
-    href: '/shifts', 
-    badge: null 
-  },
-  { 
-    id: 'expenses', 
-    label: 'Expenses', 
-    icon: Receipt, 
-    href: '/expenses', 
+    id: 'agreements', 
+    label: 'Service agreements', 
+    icon: FileCheck, 
+    href: '/agreements', 
     badge: null 
   },
   { 
@@ -65,10 +58,31 @@ export const navigationItems: NavigationItem[] = [
     badge: null 
   },
   { 
-    id: 'agreements', 
-    label: 'Agreements', 
-    icon: FileCheck, 
-    href: '/agreements', 
+    id: 'shifts', 
+    label: 'Shifts', 
+    icon: Calendar, 
+    href: '/shifts', 
+    badge: null 
+  },
+  { 
+    id: 'invoices', 
+    label: 'Invoices', 
+    icon: FileText, 
+    href: '/invoices', 
+    badge: null 
+  },
+  { 
+    id: 'expenses', 
+    label: 'Expenses', 
+    icon: Receipt, 
+    href: '/expenses', 
+    badge: null 
+  },
+  { 
+    id: 'reports', 
+    label: 'Reports', 
+    icon: TrendingUp, 
+    href: '/reports', 
     badge: null 
   },
   { 
@@ -83,20 +97,6 @@ export const navigationItems: NavigationItem[] = [
     label: 'Users', 
     icon: Users, 
     href: '/users', 
-    badge: null 
-  },
-  { 
-    id: 'invoices', 
-    label: 'Invoiced', 
-    icon: FileText, 
-    href: '/invoices', 
-    badge: null 
-  },
-  { 
-    id: 'reports', 
-    label: 'Reports', 
-    icon: TrendingUp, 
-    href: '/reports', 
     badge: null 
   },
 ];
