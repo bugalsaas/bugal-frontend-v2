@@ -128,8 +128,9 @@ export function MainLayout({
                   alt="Bugal Logo"
                   width={120}
                   height={40}
-                  className="object-contain"
+                  className="object-contain brightness-0 invert"
                   priority
+                  style={{ filter: 'brightness(0) invert(1)' }}
                 />
               </div>
               <button
