@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { expensesApi, mockExpensesResponse, Expense, ExpenseFilters, ExpenseListResponse, ExpenseType } from '@/lib/api/expenses-service';
+import { expensesApi, Expense, ExpenseFilters, ExpenseListResponse, ExpenseType } from '@/lib/api/expenses-service';
 
 export interface UseExpensesOptions {
   defaultFilters?: ExpenseFilters;
@@ -27,7 +27,7 @@ export function useExpenses(options: UseExpensesOptions = {}) {
     to: options.defaultFilters?.to,
   });
 
-  const { isDevelopmentMode, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const loadExpenses = useCallback(async () => {
     setLoading(true);
@@ -82,23 +82,10 @@ export function useExpenseActions() {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 
-  const { isDevelopmentMode } = useAuth();
-
   const createExpense = async (expense: Partial<Expense>): Promise<Expense> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock creation
-        const newExpense: Expense = {
-          ...expense as Expense,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        return newExpense;
-      } else {
-        return await expensesApi.create(expense);
-      }
+      return await expensesApi.create(expense);
     } finally {
       setIsSaving(false);
     }
@@ -107,17 +94,7 @@ export function useExpenseActions() {
   const updateExpense = async (id: string, expense: Partial<Expense>): Promise<Expense> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock update
-        const updatedExpense: Expense = {
-          ...expense as Expense,
-          id,
-          updatedAt: new Date().toISOString(),
-        };
-        return updatedExpense;
-      } else {
-        return await expensesApi.update(id, expense);
-      }
+      return await expensesApi.update(id, expense);
     } finally {
       setIsSaving(false);
     }
@@ -126,12 +103,7 @@ export function useExpenseActions() {
   const deleteExpense = async (id: string): Promise<void> => {
     setIsDeleting(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock deletion
-        console.log('Mock delete expense:', id);
-      } else {
-        await expensesApi.delete(id);
-      }
+      await expensesApi.delete(id);
     } finally {
       setIsDeleting(false);
     }
@@ -140,28 +112,13 @@ export function useExpenseActions() {
   const uploadAttachment = async (expenseId: string, file: File): Promise<any> => {
     setIsUploading(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock upload
-        const mockAttachment = {
-          id: Date.now().toString(),
-          fileName: file.name,
-          fileSize: file.size,
-          mimeType: file.type,
-          uploadedAt: new Date().toISOString(),
-        };
-        return mockAttachment;
-      } else {
-        return await expensesApi.uploadAttachment(expenseId, file);
-      }
+      return await expensesApi.uploadAttachment(expenseId, file);
     } finally {
       setIsUploading(false);
     }
   };
 
   const deleteAttachment = async (expenseId: string, attachmentId: string): Promise<void> => {
-    if (isDevelopmentMode) {
-      console.log('Mock delete attachment:', expenseId, attachmentId);
-    } else {
       await expensesApi.deleteAttachment(expenseId, attachmentId);
     }
   };
