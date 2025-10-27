@@ -181,18 +181,6 @@ export function RateModal({
               <Button variant="outline" onClick={onClose}>
                 Close
               </Button>
-              {onEdit && (
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    // Switch to edit mode
-                    onClose();
-                    // This would be handled by the parent component
-                  }}
-                >
-                  Edit Rate
-                </Button>
-              )}
               {!rate.isArchived && onArchive && (
                 <Button 
                   variant="outline"
