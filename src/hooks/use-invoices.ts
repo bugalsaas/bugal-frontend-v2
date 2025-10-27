@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { invoicesApi, mockInvoicesResponse, Invoice, InvoiceFilters, InvoiceListResponse, InvoiceStatus } from '@/lib/api/invoices-service';
+import { invoicesApi, Invoice, InvoiceFilters, InvoiceListResponse, InvoiceStatus } from '@/lib/api/invoices-service';
 
 export interface UseInvoicesOptions {
   defaultFilters?: InvoiceFilters;
@@ -27,7 +27,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
     to: options.defaultFilters?.to,
   });
 
-  const { isDevelopmentMode, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const loadInvoices = useCallback(async () => {
     setLoading(true);
@@ -49,60 +49,19 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
       const counter = [diffStatus, diffContact, diffFrom, diffTo].filter(Boolean).length;
       setFilterCounter(counter);
 
-      let response: InvoiceListResponse;
-
-      // Always use mock data for now to ensure we can test the UI
-      console.log('Using mock invoices data for testing');
-      response = mockInvoicesResponse;
-      
-      // Apply client-side filtering for mock data
-      let filteredData = [...mockInvoicesResponse.data];
-      
-      if (filter.status) {
-        filteredData = filteredData.filter(invoice => invoice.invoiceStatus === filter.status);
-      }
-      
-      if (filter.contact) {
-        filteredData = filteredData.filter(invoice => 
-          invoice.contact.fullName.toLowerCase().includes(filter.contact!.toLowerCase()) ||
-          invoice.contact.email?.toLowerCase().includes(filter.contact!.toLowerCase())
-        );
-      }
-      
-      if (filter.from) {
-        const fromDate = new Date(filter.from);
-        filteredData = filteredData.filter(invoice => new Date(invoice.date) >= fromDate);
-      }
-      
-      if (filter.to) {
-        const toDate = new Date(filter.to);
-        filteredData = filteredData.filter(invoice => new Date(invoice.date) <= toDate);
-      }
-      
-      response = {
-        data: filteredData,
-        meta: {
-          total: filteredData.length,
-          pageNumber: pagination.pageNumber,
-          pageSize: pagination.pageSize,
-        },
-      };
+      const response = await invoicesApi.getAll(filters);
 
       setData(response.data);
       setTotal(response.meta.total);
     } catch (error) {
       console.error('Invoices fetch error:', error);
-      
-      // Fallback to mock data on API error
-      console.log('API error, falling back to mock data');
-      setData(mockInvoicesResponse.data);
-      setTotal(mockInvoicesResponse.meta.total);
-      
       setError(error instanceof Error ? error.message : 'Failed to load invoices');
+      setData([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, isDevelopmentMode, filter, pagination]);
+  }, [filter, pagination]);
 
   useEffect(() => {
     loadInvoices();
@@ -139,21 +98,10 @@ export function useInvoiceActions() {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
-  const { isDevelopmentMode } = useAuth();
-
   const createInvoice = async (invoice: Partial<Invoice>): Promise<Invoice> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock creation
-        const newInvoice: Invoice = {
-          ...invoice as Invoice,
-          id: Date.now().toString(),
-        };
-        return newInvoice;
-      } else {
-        return await invoicesApi.create(invoice);
-      }
+      return await invoicesApi.create(invoice);
     } finally {
       setIsSaving(false);
     }
@@ -162,16 +110,7 @@ export function useInvoiceActions() {
   const updateInvoice = async (id: string, invoice: Partial<Invoice>): Promise<Invoice> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock update
-        const updatedInvoice: Invoice = {
-          ...invoice as Invoice,
-          id,
-        };
-        return updatedInvoice;
-      } else {
-        return await invoicesApi.update(id, invoice);
-      }
+      return await invoicesApi.update(id, invoice);
     } finally {
       setIsSaving(false);
     }
@@ -180,31 +119,18 @@ export function useInvoiceActions() {
   const deleteInvoice = async (id: string): Promise<void> => {
     setIsDeleting(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock deletion
-        console.log('Mock delete invoice:', id);
-      } else {
-        await invoicesApi.delete(id);
-      }
+      await invoicesApi.delete(id);
     } finally {
       setIsDeleting(false);
     }
   };
 
   const downloadInvoice = async (id: string): Promise<void> => {
-    if (isDevelopmentMode) {
-      console.log('Mock download invoice:', id);
-    } else {
-      await invoicesApi.download(id);
-    }
+    await invoicesApi.download(id);
   };
 
   const notifyInvoice = async (id: string, payload: { recipients: any[] }): Promise<void> => {
-    if (isDevelopmentMode) {
-      console.log('Mock notify invoice:', id, payload);
-    } else {
-      await invoicesApi.notify(id, payload);
-    }
+    await invoicesApi.notify(id, payload);
   };
 
   const selectInvoice = (invoice: Invoice) => {
