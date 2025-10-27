@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -121,11 +122,15 @@ export function MainLayout({
           {/* Logo */}
           <div className="p-6 border-b" style={{ borderColor: colors.sidebar.border }}>
             <div className="flex items-center justify-between">
-              <div className={`flex items-center space-x-2 transition-opacity ${sidebarCollapsed ? 'opacity-0' : 'opacity-100'}`}>
-                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                  <span className="text-gray-900 font-bold text-sm">B</span>
-                </div>
-                <span className="text-xl font-bold text-white">Bugal</span>
+              <div className={`flex items-center space-x-3 transition-opacity ${sidebarCollapsed ? 'opacity-0' : 'opacity-100'}`}>
+                <Image
+                  src="/logo-full.png"
+                  alt="Bugal Logo"
+                  width={120}
+                  height={40}
+                  className="object-contain"
+                  priority
+                />
               </div>
               <button
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
