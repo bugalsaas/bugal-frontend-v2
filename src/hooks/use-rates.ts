@@ -1,0 +1,225 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/auth-context';
+import { ratesApi, Rate, RateFilters, RateListResponse, RateType } from '@/lib/api/rates-service';
+
+export interface UseRatesOptions {
+  defaultFilters?: RateFilters;
+  pageNumber?: number;
+  pageSize?: number;
+}
+
+export function useRates(options: UseRatesOptions = {}) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<Rate[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pagination, setPagination] = useState({
+    pageNumber: options.pageNumber || 1,
+    pageSize: options.pageSize || 100,
+  });
+  const [filterCounter, setFilterCounter] = useState(0);
+  const [filters, setFilters] = useState<RateFilters>({
+    search: options.defaultFilters?.search || '',
+    rateType: options.defaultFilters?.rateType,
+    isArchived: options.defaultFilters?.isArchived || false,
+  });
+
+  const { isDevelopmentMode, isAuthenticated } = useAuth();
+
+  const loadRates = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const filtersToApply: RateFilters = {
+        ...filters,
+        pageNumber: pagination.pageNumber,
+        pageSize: pagination.pageSize,
+      };
+
+      // Calculate filter counter
+      const diffSearch = filters.search && filters.search.length > 0;
+      const diffRateType = filters.rateType !== undefined;
+      const diffArchived = filters.isArchived !== false;
+      
+      const counter = [diffSearch, diffRateType, diffArchived].filter(Boolean).length;
+      setFilterCounter(counter);
+
+      let response: RateListResponse;
+
+      // Always use mock data for now to ensure we can test the UI
+      console.log('Using mock rates data for testing');
+      response = await ratesApi.getAll(filtersToApply);
+
+      setData(response.data);
+      setTotal(response.meta.total);
+    } catch (error) {
+      console.error('Rates fetch error:', error);
+      
+      // Fallback to mock data on API error
+      console.log('API error, falling back to mock data');
+      try {
+        const fallbackResponse = await ratesApi.getAll(filters);
+        setData(fallbackResponse.data);
+        setTotal(fallbackResponse.meta.total);
+      } catch (fallbackError) {
+        setData([]);
+        setTotal(0);
+      }
+      
+      setError(error instanceof Error ? error.message : 'Failed to load rates');
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated, isDevelopmentMode, filters, pagination]);
+
+  useEffect(() => {
+    loadRates();
+  }, [loadRates]);
+
+  const updateFilter = useCallback((newFilter: Partial<RateFilters>) => {
+    setFilters(prev => ({ ...prev, ...newFilter }));
+  }, []);
+
+  const updatePagination = useCallback((newPagination: Partial<typeof pagination>) => {
+    setPagination(prev => ({ ...prev, ...newPagination }));
+  }, []);
+
+  const reloadList = useCallback(() => {
+    loadRates();
+  }, [loadRates]);
+
+  return {
+    loading,
+    error,
+    data,
+    total,
+    pagination,
+    filterCounter,
+    filters,
+    setFilters: updateFilter,
+    setPagination: updatePagination,
+    reloadList,
+  };
+}
+
+export function useRateActions() {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [selectedRate, setSelectedRate] = useState<Rate | null>(null);
+
+  const { isDevelopmentMode } = useAuth();
+
+  const createRate = async (rate: Omit<Rate, 'id' | 'createdAt' | 'updatedAt' | 'amountGst' | 'amountInclGst'>): Promise<Rate> => {
+    setIsSaving(true);
+    try {
+      if (isDevelopmentMode) {
+        // Mock creation
+        const newRate: Rate = {
+          ...rate,
+          id: Date.now().toString(),
+          amountGst: rate.amountExclGst * 0.1, // 10% GST
+          amountInclGst: rate.amountExclGst * 1.1,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        return newRate;
+      } else {
+        return await ratesApi.create(rate);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateRate = async (id: string, rate: Partial<Rate>): Promise<Rate> => {
+    setIsSaving(true);
+    try {
+      if (isDevelopmentMode) {
+        // Mock update
+        const updatedRate: Rate = {
+          ...rate as Rate,
+          id,
+          updatedAt: new Date().toISOString(),
+        };
+        
+        // Recalculate GST if amountExclGst changed
+        if (rate.amountExclGst !== undefined) {
+          updatedRate.amountGst = rate.amountExclGst * 0.1;
+          updatedRate.amountInclGst = rate.amountExclGst * 1.1;
+        }
+        
+        return updatedRate;
+      } else {
+        return await ratesApi.update(id, rate);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const deleteRate = async (id: string): Promise<void> => {
+    setIsDeleting(true);
+    try {
+      if (isDevelopmentMode) {
+        // Mock deletion
+        console.log('Mock delete rate:', id);
+      } else {
+        await ratesApi.delete(id);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const archiveRate = async (id: string): Promise<Rate> => {
+    setIsArchiving(true);
+    try {
+      if (isDevelopmentMode) {
+        // Mock archiving
+        const archivedRate: Rate = {
+          id,
+          idUser: 'user1',
+          name: 'Archived Rate',
+          description: 'Archived rate',
+          amountExclGst: 0,
+          amountGst: 0,
+          amountInclGst: 0,
+          rateType: RateType.Hourly,
+          isArchived: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        return archivedRate;
+      } else {
+        return await ratesApi.archive(id);
+      }
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  const selectRate = (rate: Rate) => {
+    setSelectedRate(rate);
+  };
+
+  const clearSelection = () => {
+    setSelectedRate(null);
+  };
+
+  return {
+    isDeleting,
+    isSaving,
+    isArchiving,
+    selectedRate,
+    createRate,
+    updateRate,
+    deleteRate,
+    archiveRate,
+    selectRate,
+    clearSelection,
+  };
+}

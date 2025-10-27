@@ -1,0 +1,226 @@
+'use client';
+
+import { useState } from 'react';
+import { useContacts, useContactActions } from '@/hooks/use-contacts';
+import { ContactType, ContactStatus, Contact } from '@/lib/api/contacts-service';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import {
+  Users,
+  Search,
+  Plus,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  Building,
+  User,
+  Eye,
+  Edit,
+  Trash2,
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+interface ContactsListProps {
+  onAddContact: () => void;
+  onEditContact: (contact: Contact) => void;
+  onViewContact: (contact: Contact) => void;
+}
+
+export function ContactsList({ onAddContact, onEditContact, onViewContact }: ContactsListProps) {
+  const router = useRouter();
+
+  const {
+    data: contacts,
+    loading,
+    error,
+    total,
+    reloadList,
+  } = useContacts();
+
+  const { deleteContact, selectContact } = useContactActions();
+
+  const handleDeleteContact = async (contactId: string) => {
+    if (confirm('Are you sure you want to delete this contact?')) {
+      try {
+        await deleteContact(contactId);
+        reloadList();
+      } catch (error) {
+        console.error('Failed to delete contact:', error);
+      }
+    }
+  };
+
+  const handleViewContact = (contact: Contact) => {
+    onViewContact(contact);
+  };
+
+  const handleEditContact = (contact: Contact) => {
+    onEditContact(contact);
+  };
+
+  const getContactTypeIcon = (type: ContactType) => {
+    switch (type) {
+      case ContactType.Organisation:
+        return <Building className="h-4 w-4" />;
+      case ContactType.Staff:
+        return <User className="h-4 w-4" />;
+      default:
+        return <User className="h-4 w-4" />;
+    }
+  };
+
+  const getStatusBadgeVariant = (status: ContactStatus) => {
+    switch (status) {
+      case ContactStatus.Active:
+        return 'default';
+      case ContactStatus.Inactive:
+        return 'secondary';
+      case ContactStatus.Archived:
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(5)].map((_, i) => (
+          <Card key={i} className="p-4">
+            <div className="animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 mb-4">Error: {error}</p>
+        <Button onClick={reloadList}>Retry</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Results Summary */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-600">
+          {total} contact{total !== 1 ? 's' : ''} found
+        </p>
+      </div>
+
+      {/* Contacts List */}
+      <div className="space-y-3">
+        {contacts?.map((contact) => (
+          <Card key={contact.id} className="p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    {getContactTypeIcon(contact.contactType)}
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {contact.fullName}
+                    </h3>
+                  </div>
+                  <Badge variant={getStatusBadgeVariant(contact.status)}>
+                    {contact.status}
+                  </Badge>
+                  <Badge variant="outline">
+                    {contact.contactType}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                  {contact.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      <span>{contact.email}</span>
+                    </div>
+                  )}
+                  {contact.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      <span>{contact.phone}</span>
+                    </div>
+                  )}
+                  {contact.addressLine1 && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      <span>
+                        {contact.addressLine1}
+                        {contact.addressLine2 && `, ${contact.addressLine2}`}
+                        {contact.state && `, ${contact.state}`}
+                        {contact.postcode && ` ${contact.postcode}`}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    <span>Created: {new Date(contact.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+
+                {contact.notes && (
+                  <div className="mt-3 text-sm text-gray-600">
+                    <p className="italic">"{contact.notes}"</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleViewContact(contact)}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleEditContact(contact)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDeleteContact(contact.id)}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Empty State */}
+      {contacts?.length === 0 && (
+        <div className="text-center py-12">
+          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            No contacts found
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Get started by adding your first contact
+          </p>
+          <Button onClick={onAddContact} className="flex items-center mx-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Contact
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
