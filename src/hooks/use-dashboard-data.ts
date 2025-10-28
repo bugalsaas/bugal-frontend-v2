@@ -30,13 +30,7 @@ export function useDashboardData(userId?: string, period?: DashboardPeriod | str
       // Fetch real data from API
       console.log('Fetching real dashboard data');
       
-      const [
-        todaysShiftsData,
-        pendingShiftsData,
-        unbilledShiftsData,
-        overdueInvoicesData,
-        summaryData,
-      ] = await Promise.all([
+      const results = await Promise.allSettled([
         dashboardApi.getTodaysShifts(userId),
         dashboardApi.getPendingShifts(userId),
         dashboardApi.getUnbilledShifts(userId),
@@ -44,11 +38,42 @@ export function useDashboardData(userId?: string, period?: DashboardPeriod | str
         dashboardApi.getSummary(period || DashboardPeriod.Current, userId),
       ]);
 
-      setTodaysShifts(todaysShiftsData);
-      setPendingShifts(pendingShiftsData);
-      setUnbilledShifts(unbilledShiftsData);
-      setOverdueInvoices(overdueInvoicesData);
-      setSummary(summaryData);
+      // Handle each result separately
+      if (results[0].status === 'fulfilled') {
+        setTodaysShifts(results[0].value);
+      } else {
+        console.error('Failed to fetch today\'s shifts:', results[0].reason);
+        setTodaysShifts([]);
+      }
+
+      if (results[1].status === 'fulfilled') {
+        setPendingShifts(results[1].value);
+      } else {
+        console.error('Failed to fetch pending shifts:', results[1].reason);
+        setPendingShifts(0);
+      }
+
+      if (results[2].status === 'fulfilled') {
+        setUnbilledShifts(results[2].value);
+      } else {
+        console.error('Failed to fetch unbilled shifts:', results[2].reason);
+        setUnbilledShifts(0);
+      }
+
+      if (results[3].status === 'fulfilled') {
+        setOverdueInvoices(results[3].value);
+      } else {
+        console.error('Failed to fetch overdue invoices:', results[3].reason);
+        setOverdueInvoices(0);
+      }
+
+      if (results[4].status === 'fulfilled') {
+        setSummary(results[4].value);
+      } else {
+        console.error('Failed to fetch summary:', results[4].reason);
+        setSummary(null);
+      }
+
       setRecentActivity([]); // Static for now - no backend endpoint
       setQuickActions([]); // Static for now
     } catch (error) {
