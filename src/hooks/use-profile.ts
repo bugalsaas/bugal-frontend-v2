@@ -12,11 +12,16 @@ export function useProfile() {
   useEffect(() => {
     if (user && isAuthenticated) {
       // Transform auth context user to Profile format
+      const anyUser: any = user as any;
+      const rawFirst = anyUser.firstName || (user.name ? user.name.split(' ')[0] : '') || (user.email ? user.email.split('@')[0] : '');
+      const rawLast = anyUser.lastName || (user.name ? user.name.split(' ').slice(1).join(' ') : '');
+      const fullNameComputed = anyUser.fullName || user.name || `${rawFirst}${rawLast ? ` ${rawLast}` : ''}` || user.email;
+
       const profileData: Profile = {
         id: user.id,
-        firstName: user.name?.split(' ')[0] || '',
-        lastName: user.name?.split(' ').slice(1).join(' ') || '',
-        fullName: user.name || '',
+        firstName: rawFirst || '',
+        lastName: rawLast || '',
+        fullName: fullNameComputed || '',
         email: user.email,
         initials: user.initials || 'U',
         color: user.avatar || '#3B82F6',
@@ -33,7 +38,7 @@ export function useProfile() {
         bankNameOther: undefined,
         bankBsb: undefined,
         bankAccountNumber: undefined,
-        createdAt: '',
+        createdAt: anyUser.createdAt || '',
         isEmailConfirmed: true,
         completed: false,
       };
