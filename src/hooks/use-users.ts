@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { usersApi, UserManagement, UserFilters, UserListResponse } from '@/lib/api/users-service';
 
 export function useUsers() {
-  const { isAuthenticated, isDevelopmentMode } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [data, setData] = useState<UserManagement[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export function useUsers() {
     } finally {
       setIsLoading(false);
     }
-  }, [filters, pagination, isAuthenticated, isDevelopmentMode]);
+  }, [filters, pagination, isAuthenticated]);
 
   useEffect(() => {
     loadUsers();

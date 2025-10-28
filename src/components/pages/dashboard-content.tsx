@@ -15,13 +15,50 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useDashboardData } from '@/hooks/use-dashboard-data';
 
 export function DashboardContent() {
   const router = useRouter();
+  const { 
+    todaysShifts, 
+    pendingShifts, 
+    unbilledShifts, 
+    overdueInvoices, 
+    isLoading, 
+    error 
+  } = useDashboardData();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="p-6">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <p className="text-red-600">Error loading dashboard: {error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards - Matching old design */}
+      {/* Stats Cards - Using real data */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Today's Shifts */}
         <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/shifts')}>
@@ -32,12 +69,12 @@ export function DashboardContent() {
               </div>
               <div>
                 <h3 className="text-sm font-medium text-gray-600">Today's shifts</h3>
-                <p className="text-2xl font-bold text-gray-900">12</p>
+                <p className="text-2xl font-bold text-gray-900">{todaysShifts.length}</p>
               </div>
             </div>
           </div>
           <div className="text-xs text-gray-500">
-            Next shift: 08:00 AM
+            {todaysShifts.length > 0 ? `Next shift: ${todaysShifts[0]?.startDate || 'N/A'}` : 'No shifts today'}
           </div>
         </Card>
 
@@ -50,7 +87,7 @@ export function DashboardContent() {
               </div>
               <div>
                 <h3 className="text-sm font-medium text-gray-600">Shifts to complete</h3>
-                <p className="text-2xl font-bold text-gray-900">5</p>
+                <p className="text-2xl font-bold text-gray-900">{pendingShifts}</p>
               </div>
             </div>
           </div>
@@ -67,8 +104,8 @@ export function DashboardContent() {
                 <FileText className="h-6 w-6 text-orange-600" />
               </div>
               <div>
-                <h3 className="text-sm font-medium text-gray-600">Unbilled shifts</h3>
-                <p className="text-2xl font-bold text-gray-900">8</p>
+                <h3 className="text-sm font-medium text-gray-600">Not Invoiced</h3>
+                <p className="text-2xl font-bold text-gray-900">{unbilledShifts}</p>
               </div>
             </div>
           </div>
@@ -85,8 +122,8 @@ export function DashboardContent() {
                 <AlertCircle className="h-6 w-6 text-red-600" />
               </div>
               <div>
-                <h3 className="text-sm font-medium text-gray-600">Overdue invoices</h3>
-                <p className="text-2xl font-bold text-gray-900">3</p>
+                <h3 className="text-sm font-medium text-gray-600">Invoices Overdue</h3>
+                <p className="text-2xl font-bold text-gray-900">{overdueInvoices}</p>
               </div>
             </div>
           </div>

@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { subscriptionApi, PlansResponse, Promo } from '@/lib/api/subscription-service';
 
 export function usePlans() {
-  const { isAuthenticated, isDevelopmentMode } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [data, setData] = useState<PlansResponse[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export function usePlans() {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, isDevelopmentMode]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     loadPlans();
@@ -36,7 +36,7 @@ export function usePlans() {
 }
 
 export function usePromo() {
-  const { isAuthenticated, isDevelopmentMode } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [data, setData] = useState<Promo | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export function usePromo() {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, isDevelopmentMode]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     loadPromo();

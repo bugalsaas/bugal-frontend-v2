@@ -18,7 +18,6 @@ import {
 export function useReportShift() {
   const [loading, setIsLoading] = useState(false);
   const [obj, setObj] = useState<ShiftReportData | undefined>();
-  const { isDevelopmentMode } = useAuth();
 
   const generate = async (payload: ReportWithDatesAssigneeAndContactDto) => {
     setIsLoading(true);
@@ -39,7 +38,6 @@ export function useReportShift() {
 export function useReportIncident() {
   const [loading, setIsLoading] = useState(false);
   const [obj, setObj] = useState<IncidentReportData | undefined>();
-  const { isDevelopmentMode } = useAuth();
 
   const generate = async (payload: ReportIncidentCreateDto) => {
     setIsLoading(true);
@@ -60,7 +58,6 @@ export function useReportIncident() {
 export function useReportKm() {
   const [loading, setIsLoading] = useState(false);
   const [obj, setObj] = useState<KmsReportData | undefined>();
-  const { isDevelopmentMode } = useAuth();
 
   const generate = async (payload: ReportWithDatesAssigneeAndContactDto) => {
     setIsLoading(true);
@@ -81,7 +78,6 @@ export function useReportKm() {
 export function useReportTax() {
   const [loading, setIsLoading] = useState(false);
   const [obj, setObj] = useState<TaxReportData | undefined>();
-  const { isDevelopmentMode } = useAuth();
 
   const generate = async (payload: ReportTaxCreateDto) => {
     setIsLoading(true);
@@ -102,7 +98,6 @@ export function useReportTax() {
 export function useReportInvoice() {
   const [loading, setIsLoading] = useState(false);
   const [obj, setObj] = useState<InvoiceReportData | undefined>();
-  const { isDevelopmentMode } = useAuth();
 
   const generate = async (payload: ReportInvoiceCreateDto) => {
     setIsLoading(true);

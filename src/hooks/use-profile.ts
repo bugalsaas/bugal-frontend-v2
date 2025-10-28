@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { profileApi, Profile, ProfileUpdateDto } from '@/lib/api/profile-service';
 
 export function useProfile() {
-  const { isAuthenticated, isDevelopmentMode } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +17,7 @@ export function useProfile() {
       setProfile(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load profile');
-      // Don't set profile to null - keep previous data or use mock data
+      // Don't set profile to null - keep previous data
     } finally {
       setIsLoading(false);
     }

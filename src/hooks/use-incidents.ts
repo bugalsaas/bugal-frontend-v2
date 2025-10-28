@@ -28,7 +28,7 @@ export function useIncidents(options: UseIncidentsOptions = {}) {
     endDate: options.defaultFilters?.endDate,
   });
 
-  const { isDevelopmentMode, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const loadIncidents = useCallback(async () => {
     setLoading(true);
@@ -50,33 +50,19 @@ export function useIncidents(options: UseIncidentsOptions = {}) {
       const counter = [diffSearch, diffShift, diffContact, diffDateRange].filter(Boolean).length;
       setFilterCounter(counter);
 
-      let response: IncidentListResponse;
-
-      // Always use mock data for now to ensure we can test the UI
-      console.log('Using mock incidents data for testing');
-      response = await incidentsApi.getAll(filtersToApply);
+      const response = await incidentsApi.getAll(filtersToApply);
 
       setData(response.data);
       setTotal(response.meta.total);
     } catch (error) {
       console.error('Incidents fetch error:', error);
-      
-      // Fallback to mock data on API error
-      console.log('API error, falling back to mock data');
-      try {
-        const fallbackResponse = await incidentsApi.getAll(filters);
-        setData(fallbackResponse.data);
-        setTotal(fallbackResponse.meta.total);
-      } catch (fallbackError) {
-        setData([]);
-        setTotal(0);
-      }
-      
       setError(error instanceof Error ? error.message : 'Failed to load incidents');
+      setData([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, isDevelopmentMode, filters, pagination]);
+  }, [isAuthenticated, filters, pagination]);
 
   useEffect(() => {
     loadIncidents();

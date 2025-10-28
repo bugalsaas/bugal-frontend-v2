@@ -4,7 +4,7 @@ import { organizationsApi, Organization, OrganizationUser, OrganizationFilters, 
 
 // Organizations hooks
 export function useOrganizations() {
-  const { isAuthenticated, isDevelopmentMode } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [data, setData] = useState<Organization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -13,7 +13,7 @@ export function useOrganizations() {
   const [filterCounter, setFilterCounter] = useState(0);
 
   const loadOrganizations = useCallback(async () => {
-    if (!isAuthenticated && !isDevelopmentMode) {
+    if (!isAuthenticated) {
       setIsLoading(false);
       return;
     }
@@ -40,14 +40,11 @@ export function useOrganizations() {
       setFilterCounter(activeFilters);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load organizations');
-      if (isDevelopmentMode) {
-        // Fallback to mock data
-        setData([]);
-      }
+      setData([]);
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, isDevelopmentMode, pagination.page, pagination.pageSize, filters]);
+  }, [isAuthenticated, pagination.page, pagination.pageSize, filters]);
 
   useEffect(() => {
     loadOrganizations();

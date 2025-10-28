@@ -54,37 +54,14 @@ export interface QuickAction {
 
 // API service functions
 export const dashboardApi = {
-  async getStats(userId?: string): Promise<DashboardStats> {
-    const token = getToken();
-    if (!token) throw new Error('No authentication token');
-
-    const params = new URLSearchParams();
-    if (userId && userId !== '-1') {
-      params.append('user', userId);
-    }
-
-    const response = await fetch(`${API_BASE_URL}/dashboards/stats?${params}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch dashboard stats');
-    }
-
-    return response.json();
-  },
 
   async getTodaysShifts(userId?: string): Promise<DashboardShift[]> {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
     const params = new URLSearchParams();
-    if (userId && userId !== '-1') {
-      params.append('user', userId);
-    }
+    // Always pass user parameter - use '-1' for all users if no specific user provided
+    params.append('user', userId || '-1');
 
     const response = await fetch(`${API_BASE_URL}/dashboards/shifts/today?${params}`, {
       headers: {
@@ -105,9 +82,8 @@ export const dashboardApi = {
     if (!token) throw new Error('No authentication token');
 
     const params = new URLSearchParams();
-    if (userId && userId !== '-1') {
-      params.append('user', userId);
-    }
+    // Always pass user parameter - use '-1' for all users if no specific user provided
+    params.append('user', userId || '-1');
 
     const response = await fetch(`${API_BASE_URL}/dashboards/shifts/incomplete?${params}`, {
       headers: {
@@ -129,9 +105,8 @@ export const dashboardApi = {
     if (!token) throw new Error('No authentication token');
 
     const params = new URLSearchParams();
-    if (userId && userId !== '-1') {
-      params.append('user', userId);
-    }
+    // Always pass user parameter - use '-1' for all users if no specific user provided
+    params.append('user', userId || '-1');
 
     const response = await fetch(`${API_BASE_URL}/dashboards/shifts/unbilled?${params}`, {
       headers: {
@@ -153,9 +128,8 @@ export const dashboardApi = {
     if (!token) throw new Error('No authentication token');
 
     const params = new URLSearchParams();
-    if (userId && userId !== '-1') {
-      params.append('user', userId);
-    }
+    // Always pass user parameter - use '-1' for all users if no specific user provided
+    params.append('user', userId || '-1');
 
     const response = await fetch(`${API_BASE_URL}/dashboards/invoices/overdue?${params}`, {
       headers: {
@@ -185,24 +159,6 @@ export const dashboardApi = {
 
     if (!response.ok) {
       throw new Error('Failed to fetch dashboard summary');
-    }
-
-    return response.json();
-  },
-
-  async getRecentActivity(): Promise<RecentActivity[]> {
-    const token = getToken();
-    if (!token) throw new Error('No authentication token');
-
-    const response = await fetch(`${API_BASE_URL}/dashboards/recent-activity`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch recent activity');
     }
 
     return response.json();

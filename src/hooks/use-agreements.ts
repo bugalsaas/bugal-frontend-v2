@@ -28,7 +28,7 @@ export function useAgreements(options: UseAgreementsOptions = {}) {
     endDate: options.defaultFilters?.endDate,
   });
 
-  const { isDevelopmentMode, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const loadAgreements = useCallback(async () => {
     setLoading(true);
@@ -50,33 +50,19 @@ export function useAgreements(options: UseAgreementsOptions = {}) {
       const counter = [diffSearch, diffContact, diffStatus, diffDateRange].filter(Boolean).length;
       setFilterCounter(counter);
 
-      let response: AgreementListResponse;
-
-      // Always use mock data for now to ensure we can test the UI
-      console.log('Using mock agreements data for testing');
-      response = await agreementsApi.getAll(filtersToApply);
+      const response = await agreementsApi.getAll(filtersToApply);
 
       setData(response.data);
       setTotal(response.meta.total);
     } catch (error) {
       console.error('Agreements fetch error:', error);
-      
-      // Fallback to mock data on API error
-      console.log('API error, falling back to mock data');
-      try {
-        const fallbackResponse = await agreementsApi.getAll(filters);
-        setData(fallbackResponse.data);
-        setTotal(fallbackResponse.meta.total);
-      } catch (fallbackError) {
-        setData([]);
-        setTotal(0);
-      }
-      
       setError(error instanceof Error ? error.message : 'Failed to load agreements');
+      setData([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, isDevelopmentMode, filters, pagination]);
+  }, [isAuthenticated, filters, pagination]);
 
   useEffect(() => {
     loadAgreements();
@@ -115,29 +101,10 @@ export function useAgreementActions() {
   const [isNotifying, setIsNotifying] = useState(false);
   const [selectedAgreement, setSelectedAgreement] = useState<Agreement | null>(null);
 
-  const { isDevelopmentMode } = useAuth();
-
   const createAgreement = async (agreement: Omit<Agreement, 'id' | 'createdAt' | 'updatedAt' | 'code' | 'user'>): Promise<Agreement> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock creation
-        const newAgreement: Agreement = {
-          ...agreement,
-          id: Date.now().toString(),
-          code: `AGR-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-          user: {
-            id: 'user1',
-            fullName: 'Current User',
-            email: 'user@example.com',
-          },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        return newAgreement;
-      } else {
-        return await agreementsApi.create(agreement);
-      }
+      return await agreementsApi.create(agreement);
     } finally {
       setIsSaving(false);
     }
@@ -146,17 +113,7 @@ export function useAgreementActions() {
   const updateAgreement = async (id: string, agreement: Partial<Agreement>): Promise<Agreement> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock update
-        const updatedAgreement: Agreement = {
-          ...agreement as Agreement,
-          id,
-          updatedAt: new Date().toISOString(),
-        };
-        return updatedAgreement;
-      } else {
-        return await agreementsApi.update(id, agreement);
-      }
+      return await agreementsApi.update(id, agreement);
     } finally {
       setIsSaving(false);
     }
@@ -165,12 +122,7 @@ export function useAgreementActions() {
   const deleteAgreement = async (id: string): Promise<void> => {
     setIsDeleting(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock deletion
-        console.log('Mock delete agreement:', id);
-      } else {
-        await agreementsApi.delete(id);
-      }
+      await agreementsApi.delete(id);
     } finally {
       setIsDeleting(false);
     }
@@ -179,34 +131,7 @@ export function useAgreementActions() {
   const completeAgreement = async (id: string): Promise<Agreement> => {
     setIsCompleting(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock completion
-        const completedAgreement: Agreement = {
-          id,
-          user: { id: 'user1', fullName: 'Current User', email: 'user@example.com' },
-          idUser: 'user1',
-          userResponsibilities: [],
-          contact: { id: 'contact1', fullName: 'Test Contact', email: 'contact@example.com' },
-          idContact: 'contact1',
-          contactResponsibilities: [],
-          code: 'AGR-2024-001',
-          agreementStatus: AgreementStatus.Completed,
-          startDate: new Date().toISOString(),
-          endDate: new Date().toISOString(),
-          reviewDate: new Date().toISOString(),
-          amendmentDays: 7,
-          sendInvoicesAfter: 14,
-          supportItems: [],
-          canChargeCancellation: true,
-          attachments: [],
-          completedAt: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        return completedAgreement;
-      } else {
-        return await agreementsApi.complete(id);
-      }
+      return await agreementsApi.complete(id);
     } finally {
       setIsCompleting(false);
     }
@@ -215,33 +140,7 @@ export function useAgreementActions() {
   const draftAgreement = async (id: string): Promise<Agreement> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock draft reversion
-        const draftAgreement: Agreement = {
-          id,
-          user: { id: 'user1', fullName: 'Current User', email: 'user@example.com' },
-          idUser: 'user1',
-          userResponsibilities: [],
-          contact: { id: 'contact1', fullName: 'Test Contact', email: 'contact@example.com' },
-          idContact: 'contact1',
-          contactResponsibilities: [],
-          code: 'AGR-2024-001',
-          agreementStatus: AgreementStatus.Draft,
-          startDate: new Date().toISOString(),
-          endDate: new Date().toISOString(),
-          reviewDate: new Date().toISOString(),
-          amendmentDays: 7,
-          sendInvoicesAfter: 14,
-          supportItems: [],
-          canChargeCancellation: true,
-          attachments: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        return draftAgreement;
-      } else {
-        return await agreementsApi.draft(id);
-      }
+      return await agreementsApi.draft(id);
     } finally {
       setIsSaving(false);
     }
@@ -250,12 +149,7 @@ export function useAgreementActions() {
   const notifyAgreement = async (id: string, recipients: string[]): Promise<void> => {
     setIsNotifying(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock notification
-        console.log('Mock notify agreement:', id, 'to recipients:', recipients);
-      } else {
-        await agreementsApi.notify(id, recipients);
-      }
+      await agreementsApi.notify(id, recipients);
     } finally {
       setIsNotifying(false);
     }
