@@ -76,6 +76,14 @@ export function useDashboardData(userId?: string, period?: DashboardPeriod | str
 
       setRecentActivity([]); // Static for now - no backend endpoint
       setQuickActions([]); // Static for now
+      
+      // Only set error state if ALL endpoints failed
+      const allFailed = results.every(result => result.status === 'rejected');
+      if (allFailed) {
+        setError('Failed to load dashboard data. Please try again.');
+      } else {
+        setError(null);
+      }
     } catch (error) {
       console.error('Dashboard data fetch error:', error);
       setError(error instanceof Error ? error.message : 'Failed to load dashboard data');
