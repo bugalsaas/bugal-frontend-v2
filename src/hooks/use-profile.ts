@@ -3,12 +3,18 @@ import { useAuth } from '@/contexts/auth-context';
 import { profileApi, Profile, ProfileUpdateDto } from '@/lib/api/profile-service';
 
 export function useProfile() {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadProfile = useCallback(async () => {
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      setError('Not authenticated');
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -16,16 +22,17 @@ export function useProfile() {
       const data = await profileApi.getMe();
       setProfile(data);
     } catch (err) {
+      console.error('Profile loading error:', err);
       setError(err instanceof Error ? err.message : 'Failed to load profile');
-      // Don't set profile to null - keep previous data
+      setProfile(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     loadProfile();
-  }, []);
+  }, [loadProfile]);
 
   const updateProfile = async (data: ProfileUpdateDto): Promise<Profile> => {
     try {
@@ -56,3 +63,5 @@ export function useProfile() {
     reloadProfile: loadProfile,
   };
 }
+
+export default useProfile;
