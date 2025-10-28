@@ -411,21 +411,23 @@ export const organizationsApi = {
   },
 
   update: async (id: string, data: OrganizationUpdateDto): Promise<Organization> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      const orgIndex = mockOrganizations.findIndex(o => o.id === id);
-      if (orgIndex === -1) throw new Error('Organization not found');
-      
-      mockOrganizations[orgIndex] = { ...mockOrganizations[orgIndex], ...data };
-      return mockOrganizations[orgIndex];
-    }
-    
-    const response = await fetch(`/api/organizations/${id}`, {
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
+
+    const response = await fetch(`${API_BASE_URL}/organizations/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(data),
     });
     
-    if (!response.ok) throw new Error('Failed to update organization');
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to update organization');
+    }
+    
     return response.json();
   },
 
