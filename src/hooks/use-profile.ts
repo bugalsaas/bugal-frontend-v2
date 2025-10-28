@@ -8,31 +8,45 @@ export function useProfile() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadProfile = useCallback(async () => {
-    if (!isAuthenticated) {
+  // Use user data from auth context instead of making a separate API call
+  useEffect(() => {
+    if (user && isAuthenticated) {
+      // Transform auth context user to Profile format
+      const profileData: Profile = {
+        id: user.id,
+        firstName: user.name?.split(' ')[0] || '',
+        lastName: user.name?.split(' ').slice(1).join(' ') || '',
+        fullName: user.name || '',
+        email: user.email,
+        initials: user.initials || 'U',
+        color: user.avatar || '#3B82F6',
+        gender: undefined,
+        dob: undefined,
+        phoneNumber: undefined,
+        addressLine1: undefined,
+        addressLine2: undefined,
+        idCountry: undefined,
+        idState: undefined,
+        postcode: undefined,
+        timezone: undefined,
+        bankName: undefined,
+        bankNameOther: undefined,
+        bankBsb: undefined,
+        bankAccountNumber: undefined,
+        createdAt: '',
+        isEmailConfirmed: true,
+        completed: false,
+      };
+      
+      setProfile(profileData);
+      setIsLoading(false);
+      setError(null);
+    } else if (!isAuthenticated) {
       setIsLoading(false);
       setError('Not authenticated');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const data = await profileApi.getMe();
-      setProfile(data);
-    } catch (err) {
-      console.error('Profile loading error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load profile');
       setProfile(null);
-    } finally {
-      setIsLoading(false);
     }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+  }, [user, isAuthenticated]);
 
   const updateProfile = async (data: ProfileUpdateDto): Promise<Profile> => {
     try {
@@ -60,7 +74,10 @@ export function useProfile() {
     error,
     updateProfile,
     patchProfile,
-    reloadProfile: loadProfile,
+    reloadProfile: () => {
+      // Refresh user data by reloading the page
+      window.location.reload();
+    },
   };
 }
 

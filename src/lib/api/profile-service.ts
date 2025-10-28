@@ -57,18 +57,26 @@ export const profileApi = {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
+    console.log('Profile API: Fetching /me endpoint');
+    
     const response = await fetch(`${API_BASE_URL}/me`, {
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        // Don't include Content-Type for GET requests
       },
     });
     
+    console.log('Profile API: Response status:', response.status);
+    
     if (!response.ok) {
-      throw new Error('Failed to fetch profile');
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error('Profile API: Error response:', errorText);
+      throw new Error(`Failed to fetch profile: ${response.status} - ${errorText}`);
     }
     
-    return response.json();
+    const data = await response.json();
+    console.log('Profile API: Received data:', data);
+    return data;
   },
 
   updateMe: async (data: ProfileUpdateDto): Promise<Profile> => {
