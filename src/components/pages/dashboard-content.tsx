@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,17 +17,25 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
+import { useAuth } from '@/contexts/auth-context';
+import { DashboardPeriod } from '@/lib/api/dashboard-service';
+import { PeriodSelector } from '@/components/ui/period-selector';
+import { DashboardSummary } from '@/components/pages/dashboard-summary';
 
 export function DashboardContent() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [period, setPeriod] = useState<DashboardPeriod | string>(DashboardPeriod.Current);
+  
   const { 
     todaysShifts, 
     pendingShifts, 
     unbilledShifts, 
-    overdueInvoices, 
+    overdueInvoices,
+    summary,
     isLoading, 
     error 
-  } = useDashboardData();
+  } = useDashboardData(undefined, period);
 
   if (isLoading) {
     return (
@@ -131,6 +140,20 @@ export function DashboardContent() {
             Requires attention
           </div>
         </Card>
+      </div>
+
+      {/* Summary Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-900">Summary</h2>
+          <PeriodSelector value={period} onChange={setPeriod} />
+        </div>
+        <DashboardSummary 
+          summary={summary} 
+          isAdmin={user?.isAdmin || false}
+          organizationType={user?.organization?.type}
+          isLoading={isLoading}
+        />
       </div>
 
       {/* Recent Activity & Quick Actions */}

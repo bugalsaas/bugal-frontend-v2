@@ -3,6 +3,13 @@ import { getToken } from '@/contexts/auth-context';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
+// Dashboard period enum
+export enum DashboardPeriod {
+  All = 'all',
+  Current = 'current',
+  Previous = 'previous',
+}
+
 // Types for dashboard data
 export interface DashboardStats {
   todaysShifts: number;
@@ -27,11 +34,14 @@ export interface DashboardShift {
 }
 
 export interface DashboardSummary {
-  period: string;
-  totalRevenue: number;
-  totalShifts: number;
-  totalHours: number;
-  averageHourlyRate: number;
+  shiftsCompleted: number;
+  timeWorked: string;
+  totalDuration: number;
+  estimatedTax: number;
+  estimatedSuper: number;
+  totalIncome: number;
+  totalExpenses: number;
+  net: number;
 }
 
 export interface RecentActivity {
@@ -146,11 +156,16 @@ export const dashboardApi = {
     return data.count || data;
   },
 
-  async getSummary(period: string = 'current'): Promise<DashboardSummary> {
+  async getSummary(period: DashboardPeriod | string = DashboardPeriod.Current, userId?: string): Promise<DashboardSummary> {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${API_BASE_URL}/dashboards/summary?period=${period}`, {
+    const params = new URLSearchParams();
+    params.append('period', period);
+    // Always pass user parameter - use '-1' for all users if no specific user provided
+    params.append('user', userId || '-1');
+
+    const response = await fetch(`${API_BASE_URL}/dashboards/summary?${params}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',

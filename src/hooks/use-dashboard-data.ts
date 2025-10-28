@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { dashboardApi, DashboardStats, DashboardShift, DashboardSummary, RecentActivity, QuickAction } from '@/lib/api/dashboard-service';
+import { dashboardApi, DashboardStats, DashboardShift, DashboardSummary, DashboardPeriod, RecentActivity, QuickAction } from '@/lib/api/dashboard-service';
 
-export function useDashboardData(userId?: string) {
+export function useDashboardData(userId?: string, period?: DashboardPeriod | string) {
   const [todaysShifts, setTodaysShifts] = useState<DashboardShift[]>([]);
   const [pendingShifts, setPendingShifts] = useState<number>(0);
   const [unbilledShifts, setUnbilledShifts] = useState<number>(0);
@@ -41,7 +41,7 @@ export function useDashboardData(userId?: string) {
         dashboardApi.getPendingShifts(userId),
         dashboardApi.getUnbilledShifts(userId),
         dashboardApi.getOverdueInvoices(userId),
-        dashboardApi.getSummary('current'),
+        dashboardApi.getSummary(period || DashboardPeriod.Current, userId),
       ]);
 
       setTodaysShifts(todaysShiftsData);
@@ -57,7 +57,7 @@ export function useDashboardData(userId?: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, userId]);
+  }, [isAuthenticated, userId, period]);
 
   useEffect(() => {
     fetchDashboardData();
