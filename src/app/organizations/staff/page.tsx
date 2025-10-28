@@ -37,6 +37,8 @@ import {
 } from '@/lib/api/organizations-service';
 import { useOrganizationUsers, useOrganizationUserActions, useRoles } from '@/hooks/use-organizations';
 import { formatDate } from '@/lib/utils';
+import { useAuth } from '@/contexts/auth-context';
+import { toast } from 'sonner';
 
 const staffSchema = z.object({
   email: z.string().email('Valid email is required'),
@@ -58,10 +60,12 @@ interface StaffModalProps {
 }
 
 function StaffModal({ isOpen, onClose, mode, user, onSave }: StaffModalProps) {
+  const { user: authUser } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#3B82F6');
   
-  const { roles, isLoading: rolesLoading } = useRoles('1'); // Using mock organization ID
+  const organizationId = authUser?.organization?.id || '';
+  const { roles, isLoading: rolesLoading } = useRoles(organizationId);
 
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(staffSchema),
@@ -414,11 +418,14 @@ function StaffModal({ isOpen, onClose, mode, user, onSave }: StaffModalProps) {
 }
 
 export default function StaffPage() {
+  const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'new' | 'edit' | 'view'>('new');
   const [selectedUser, setSelectedUser] = useState<OrganizationUser | undefined>();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  
+  const organizationId = user?.organization?.id || '';
   
   const { 
     users, 
@@ -430,7 +437,7 @@ export default function StaffPage() {
     setPagination, 
     filterCounter,
     reloadList 
-  } = useOrganizationUsers('1'); // Using mock organization ID
+  } = useOrganizationUsers(organizationId);
 
   const { 
     isLoading: actionsLoading, 
@@ -472,11 +479,12 @@ export default function StaffPage() {
   const handleDisableStaff = async (user: OrganizationUser) => {
     if (window.confirm(`Are you sure you want to disable "${user.fullName}"? They will only be able to be re-enabled after 30 days if you have enough room available depending on your subscription.`)) {
       try {
-        await disableUser('1', user.id);
+        await disableUser(organizationId, user.id);
+        toast.success(`${user.fullName} has been disabled`);
         reloadList();
       } catch (error) {
         console.error('Failed to disable staff:', error);
-        alert('Failed to disable staff. Please try again.');
+        toast.error('Failed to disable staff. Please try again.');
       }
     }
   };
@@ -484,11 +492,12 @@ export default function StaffPage() {
   const handleEnableStaff = async (user: OrganizationUser) => {
     if (window.confirm(`Are you sure you want to enable "${user.fullName}"?`)) {
       try {
-        await enableUser('1', user.id);
+        await enableUser(organizationId, user.id);
+        toast.success(`${user.fullName} has been enabled`);
         reloadList();
       } catch (error) {
         console.error('Failed to enable staff:', error);
-        alert('Failed to enable staff. Please try again.');
+        toast.error('Failed to enable staff. Please try again.');
       }
     }
   };
@@ -496,13 +505,16 @@ export default function StaffPage() {
   const handleSaveStaff = async (data: OrganizationInviteDto | StaffUpdateDto) => {
     try {
       if (modalMode === 'new') {
-        await inviteUser('1', data as OrganizationInviteDto);
+        await inviteUser(organizationId, data as OrganizationInviteDto);
+        toast.success('Staff invitation sent successfully');
       } else if (modalMode === 'edit' && selectedUser) {
-        await updateUser('1', selectedUser.id, data as StaffUpdateDto);
+        await updateUser(organizationId, selectedUser.id, data as StaffUpdateDto);
+        toast.success('Staff member updated successfully');
       }
       reloadList();
     } catch (error) {
       console.error('Failed to save staff:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to save staff');
       throw error;
     }
   };
@@ -533,6 +545,19 @@ export default function StaffPage() {
     addButtonText: 'Invite Staff',
     onAddClick: handleAddStaff,
   };
+
+  // Check if user has organization access
+  if (!organizationId) {
+    return (
+      <MainLayout headerConfig={headerConfig}>
+        <div className="text-center py-12">
+          <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">No Organization Found</h3>
+          <p className="text-gray-600 mb-4">You need to be part of an organization to manage staff.</p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   if (isLoading) {
     return (

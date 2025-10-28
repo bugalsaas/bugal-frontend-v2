@@ -75,6 +75,50 @@ export function useOrganizations() {
   };
 }
 
+// Hook to get current user's organization
+export function useCurrentOrganization() {
+  const { user, isAuthenticated } = useAuth();
+  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadOrganization = useCallback(async () => {
+    if (!isAuthenticated || !user?.organization?.id) {
+      setIsLoading(false);
+      setOrganization(null);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const data = await organizationsApi.getById(user.organization.id);
+      setOrganization(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load organization');
+      setOrganization(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, user?.organization?.id]);
+
+  useEffect(() => {
+    loadOrganization();
+  }, [loadOrganization]);
+
+  const refetch = useCallback(() => {
+    loadOrganization();
+  }, [loadOrganization]);
+
+  return {
+    organization,
+    isLoading,
+    error,
+    refetch,
+  };
+}
+
 export function useOrganizationActions() {
   const { isDevelopmentMode } = useAuth();
   const [isLoading, setIsLoading] = useState(false);

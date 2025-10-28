@@ -1,4 +1,7 @@
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { getToken } from '@/contexts/auth-context';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export enum OrganizationType {
   SoleTrader = 'SoleTrader',
@@ -375,14 +378,14 @@ export const organizationsApi = {
   },
 
   getById: async (id: string): Promise<Organization> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      const org = mockOrganizations.find(o => o.id === id);
-      if (!org) throw new Error('Organization not found');
-      return org;
-    }
-    
-    const response = await fetch(`/api/organizations/${id}`, {
-      headers: { 'Content-Type': 'application/json' },
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
+
+    const response = await fetch(`${API_BASE_URL}/organizations/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
     
     if (!response.ok) throw new Error('Failed to fetch organization');

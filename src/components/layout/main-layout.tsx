@@ -25,7 +25,8 @@ import {
   Settings,
   Rocket,
   Menu,
-  X
+  X,
+  Users
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
@@ -53,6 +54,14 @@ export function MainLayout({
 
   const handleSubscriptions = () => {
     router.push('/subscription');
+  };
+
+  const handleBusinessSettings = () => {
+    router.push('/organizations/settings');
+  };
+
+  const handleStaff = () => {
+    router.push('/organizations/staff');
   };
 
   const handleLogout = () => {
@@ -223,13 +232,17 @@ export function MainLayout({
                       <User className="h-4 w-4 mr-2" />
                       <span>Profile</span>
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleBusinessSettings}>
+                      <Settings className="h-4 w-4 mr-2" />
+                      <span>Business settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleStaff}>
+                      <Users className="h-4 w-4 mr-2" />
+                      <span>Staff</span>
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleSubscriptions}>
                       <Rocket className="h-4 w-4 mr-2" />
-                      <span>Subscriptions</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Settings className="h-4 w-4 mr-2" />
-                      <span>Settings</span>
+                      <span>Subscription</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} variant="destructive">

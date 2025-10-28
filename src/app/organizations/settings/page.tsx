@@ -25,8 +25,9 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { Organization, OrganizationType, OrganizationUpdateDto, Country, State, Bank } from '@/lib/api/organizations-service';
-import { useOrganizationActions, useCountries, useStates, useBanks } from '@/hooks/use-organizations';
+import { useOrganizationActions, useCurrentOrganization, useCountries, useStates, useBanks } from '@/hooks/use-organizations';
 import { formatDate } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const settingsSchema = z.object({
   name: z.string().min(1, 'Organization name is required'),
@@ -53,41 +54,14 @@ type SettingsFormValues = z.infer<typeof settingsSchema>;
 
 export default function OrganizationSettingsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [selectedBank, setSelectedBank] = useState<string>('');
   
+  const { organization: currentOrganization, isLoading: orgLoading, error: orgError, refetch } = useCurrentOrganization();
   const { updateOrganization } = useOrganizationActions();
   const { countries, isLoading: countriesLoading } = useCountries();
   const { states, isLoading: statesLoading } = useStates(selectedCountry);
   const { banks, isLoading: banksLoading } = useBanks();
-
-  // Mock current organization - in real app, this would come from context
-  const currentOrganization: Organization = {
-    id: '1',
-    name: 'Bugal Care Services',
-    email: 'admin@bugal.com.au',
-    organizationType: OrganizationType.Company,
-    isGstRegistered: true,
-    country: { id: '1', name: 'Australia', code: 'AU' },
-    idCountry: '1',
-    idState: '1',
-    timezone: 'Australia/Sydney',
-    phoneNumber: '+61 2 1234 5678',
-    addressLine1: '123 Business Street',
-    addressLine2: 'Suite 100',
-    postcode: '2000',
-    abn: '12345678901',
-    paymentTerms: 30,
-    invoicePrefix: 'BCS',
-    bankName: { id: '1', name: 'Commonwealth Bank', code: 'CBA' },
-    bankBsb: '062-000',
-    bankAccountNumber: '12345678',
-    referralCode: 'BUGAL2024',
-    subscriptionStatus: 'Active' as any,
-    createdAt: '2024-01-01T00:00:00Z',
-    trialEndDate: '2024-12-31T23:59:59Z',
-  };
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
@@ -159,16 +133,21 @@ export default function OrganizationSettingsPage() {
   }, [selectedBank, setValue]);
 
   const onSubmit = async (values: SettingsFormValues) => {
+    if (!currentOrganization?.id) {
+      toast.error('Organization not found');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
-      setIsSuccess(false);
       
       await updateOrganization(currentOrganization.id, values);
       
-      setIsSuccess(true);
-      setTimeout(() => setIsSuccess(false), 3000);
+      toast.success('Organization settings updated successfully!');
+      refetch(); // Reload the organization data
     } catch (error) {
       console.error('Failed to update organization:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update organization settings');
     } finally {
       setIsSubmitting(false);
     }
@@ -181,21 +160,36 @@ export default function OrganizationSettingsPage() {
     showAddButton: false,
   };
 
+  // Show loading state while fetching organization
+  if (orgLoading) {
+    return (
+      <MainLayout headerConfig={headerConfig}>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // Show error state if organization failed to load
+  if (orgError || !currentOrganization) {
+    return (
+      <MainLayout headerConfig={headerConfig}>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2 text-red-800">
+              <AlertCircle className="h-5 w-5" />
+              <span className="font-medium">{orgError || 'Failed to load organization settings'}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout headerConfig={headerConfig}>
       <div className="space-y-6">
-        {/* Success Message */}
-        {isSuccess && (
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2 text-green-800">
-                <CheckCircle className="h-5 w-5" />
-                <span className="font-medium">Organization settings updated successfully!</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Business Details */}
           <Card>
