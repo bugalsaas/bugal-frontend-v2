@@ -73,18 +73,34 @@ export const dashboardApi = {
     // Always pass user parameter - use '-1' for all users if no specific user provided
     params.append('user', userId || '-1');
 
-    const response = await fetch(`${API_BASE_URL}/dashboards/shifts/today?${params}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch today\'s shifts');
+    try {
+      const response = await fetch(`${API_BASE_URL}/dashboards/shifts/today?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Dashboard API error:', response.status, errorText);
+        throw new Error(`Failed to fetch today's shifts: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout - please try again');
+      }
+      throw error;
     }
-
-    return response.json();
   },
 
   async getPendingShifts(userId?: string): Promise<number> {
@@ -92,22 +108,35 @@ export const dashboardApi = {
     if (!token) throw new Error('No authentication token');
 
     const params = new URLSearchParams();
-    // Always pass user parameter - use '-1' for all users if no specific user provided
     params.append('user', userId || '-1');
 
-    const response = await fetch(`${API_BASE_URL}/dashboards/shifts/incomplete?${params}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch pending shifts');
+    try {
+      const response = await fetch(`${API_BASE_URL}/dashboards/shifts/incomplete?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch pending shifts: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.count || data;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout - please try again');
+      }
+      throw error;
     }
-
-    const data = await response.json();
-    return data.count || data;
   },
 
   async getUnbilledShifts(userId?: string): Promise<number> {
@@ -115,22 +144,35 @@ export const dashboardApi = {
     if (!token) throw new Error('No authentication token');
 
     const params = new URLSearchParams();
-    // Always pass user parameter - use '-1' for all users if no specific user provided
     params.append('user', userId || '-1');
 
-    const response = await fetch(`${API_BASE_URL}/dashboards/shifts/unbilled?${params}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch unbilled shifts');
+    try {
+      const response = await fetch(`${API_BASE_URL}/dashboards/shifts/unbilled?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch unbilled shifts: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.count || data;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout - please try again');
+      }
+      throw error;
     }
-
-    const data = await response.json();
-    return data.count || data;
   },
 
   async getOverdueInvoices(userId?: string): Promise<number> {
@@ -138,22 +180,35 @@ export const dashboardApi = {
     if (!token) throw new Error('No authentication token');
 
     const params = new URLSearchParams();
-    // Always pass user parameter - use '-1' for all users if no specific user provided
     params.append('user', userId || '-1');
 
-    const response = await fetch(`${API_BASE_URL}/dashboards/invoices/overdue?${params}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch overdue invoices');
+    try {
+      const response = await fetch(`${API_BASE_URL}/dashboards/invoices/overdue?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch overdue invoices: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.count || data;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout - please try again');
+      }
+      throw error;
     }
-
-    const data = await response.json();
-    return data.count || data;
   },
 
   async getSummary(period: DashboardPeriod | string = DashboardPeriod.Current, userId?: string): Promise<DashboardSummary> {
@@ -162,20 +217,33 @@ export const dashboardApi = {
 
     const params = new URLSearchParams();
     params.append('period', period);
-    // Always pass user parameter - use '-1' for all users if no specific user provided
     params.append('user', userId || '-1');
 
-    const response = await fetch(`${API_BASE_URL}/dashboards/summary?${params}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch dashboard summary');
+    try {
+      const response = await fetch(`${API_BASE_URL}/dashboards/summary?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch dashboard summary: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout - please try again');
+      }
+      throw error;
     }
-
-    return response.json();
   },
 };
