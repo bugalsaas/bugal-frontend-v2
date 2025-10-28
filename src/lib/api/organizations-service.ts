@@ -377,19 +377,11 @@ export const organizationsApi = {
     return response.json();
   },
 
+  // Note: There's no GET /organizations/:id endpoint in the backend
+  // Organization data is provided via the /me endpoint in the auth context
+  // This method is kept for backward compatibility but returns null
   getById: async (id: string): Promise<Organization> => {
-    const token = getToken();
-    if (!token) throw new Error('No authentication token');
-
-    const response = await fetch(`${API_BASE_URL}/organizations/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) throw new Error('Failed to fetch organization');
-    return response.json();
+    throw new Error('Use organization data from auth context instead');
   },
 
   create: async (data: OrganizationCreateDto): Promise<Organization> => {

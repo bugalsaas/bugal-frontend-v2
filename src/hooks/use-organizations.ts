@@ -78,41 +78,31 @@ export function useOrganizations() {
 // Hook to get current user's organization
 export function useCurrentOrganization() {
   const { user, isAuthenticated } = useAuth();
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!user?.organization);
   const [error, setError] = useState<string | null>(null);
 
-  const loadOrganization = useCallback(async () => {
-    if (!isAuthenticated || !user?.organization?.id) {
-      setIsLoading(false);
-      setOrganization(null);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const data = await organizationsApi.getById(user.organization.id);
-      setOrganization(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load organization');
-      setOrganization(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isAuthenticated, user?.organization?.id]);
-
+  const organization = user?.organization as Organization | undefined;
+  
   useEffect(() => {
-    loadOrganization();
-  }, [loadOrganization]);
+    if (isAuthenticated && user) {
+      setIsLoading(false);
+      if (!user.organization) {
+        setError('No organization found for current user');
+      } else {
+        setError(null);
+      }
+    }
+  }, [isAuthenticated, user]);
 
-  const refetch = useCallback(() => {
-    loadOrganization();
-  }, [loadOrganization]);
+  const refetch = useCallback(async () => {
+    // Refetch would reload the /me endpoint through auth context
+    if (user) {
+      window.location.reload(); // Trigger re-authentication
+    }
+  }, [user]);
 
   return {
-    organization,
+    organization: organization || null,
     isLoading,
     error,
     refetch,
