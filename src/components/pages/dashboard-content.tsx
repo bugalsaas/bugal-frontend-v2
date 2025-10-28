@@ -37,22 +37,7 @@ export function DashboardContent() {
     error 
   } = useDashboardData(undefined, period);
 
-  // Show loading state for a maximum of 5 seconds
-  const [showLoading, setShowLoading] = useState(true);
-  useEffect(() => {
-    if (!isLoading) {
-      setShowLoading(false);
-    }
-  }, [isLoading]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowLoading(false);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (showLoading && isLoading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -74,12 +59,7 @@ export function DashboardContent() {
     return (
       <div className="space-y-6">
         <div className="text-center py-8">
-          <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h3>
-          <p className="text-gray-600">{error}</p>
-          <Button onClick={() => window.location.reload()} className="mt-4">
-            Retry
-          </Button>
+          <p className="text-red-600">Error loading dashboard: {error}</p>
         </div>
       </div>
     );

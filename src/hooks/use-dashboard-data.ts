@@ -30,37 +30,25 @@ export function useDashboardData(userId?: string, period?: DashboardPeriod | str
       // Fetch real data from API
       console.log('Fetching real dashboard data');
       
-      try {
-        const [
-          todaysShiftsData,
-          pendingShiftsData,
-          unbilledShiftsData,
-          overdueInvoicesData,
-        ] = await Promise.all([
-          dashboardApi.getTodaysShifts(userId),
-          dashboardApi.getPendingShifts(userId),
-          dashboardApi.getUnbilledShifts(userId),
-          dashboardApi.getOverdueInvoices(userId),
-        ]);
+      const [
+        todaysShiftsData,
+        pendingShiftsData,
+        unbilledShiftsData,
+        overdueInvoicesData,
+        summaryData,
+      ] = await Promise.all([
+        dashboardApi.getTodaysShifts(userId),
+        dashboardApi.getPendingShifts(userId),
+        dashboardApi.getUnbilledShifts(userId),
+        dashboardApi.getOverdueInvoices(userId),
+        dashboardApi.getSummary(period || DashboardPeriod.Current, userId),
+      ]);
 
-        setTodaysShifts(todaysShiftsData);
-        setPendingShifts(pendingShiftsData);
-        setUnbilledShifts(unbilledShiftsData);
-        setOverdueInvoices(overdueInvoicesData);
-
-        // Try to fetch summary, but don't fail if it errors
-        try {
-          const summaryData = await dashboardApi.getSummary(period || DashboardPeriod.Current, userId);
-          setSummary(summaryData);
-        } catch (summaryError) {
-          console.warn('Failed to fetch summary data:', summaryError);
-          setSummary(null);
-        }
-      } catch (mainError) {
-        console.error('Error fetching dashboard data:', mainError);
-        throw mainError;
-      }
-      
+      setTodaysShifts(todaysShiftsData);
+      setPendingShifts(pendingShiftsData);
+      setUnbilledShifts(unbilledShiftsData);
+      setOverdueInvoices(overdueInvoicesData);
+      setSummary(summaryData);
       setRecentActivity([]); // Static for now - no backend endpoint
       setQuickActions([]); // Static for now
     } catch (error) {

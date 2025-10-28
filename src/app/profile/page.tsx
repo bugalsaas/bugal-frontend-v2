@@ -137,7 +137,8 @@ export default function ProfilePage() {
     }
   };
 
-  const getInitials = (firstName: string, lastName: string) => {
+  const getInitials = (firstName?: string, lastName?: string) => {
+    if (!firstName || !lastName) return 'U';
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
 
@@ -209,19 +210,21 @@ export default function ProfilePage() {
           <Card>
             <CardHeader>
               <div className="flex items-center space-x-4">
-                <Avatar className="h-20 w-20" style={{ backgroundColor: profile.color }}>
+                <Avatar className="h-20 w-20" style={{ backgroundColor: profile?.color || '#3B82F6' }}>
                   <AvatarFallback className="text-white font-semibold text-2xl">
-                    {getInitials(profile.firstName, profile.lastName)}
+                    {getInitials(profile?.firstName, profile?.lastName)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <CardTitle className="text-3xl">{profile.fullName}</CardTitle>
-                  <p className="text-gray-600 mt-1">{profile.email}</p>
+                  <CardTitle className="text-3xl">{profile?.fullName || 'Loading...'}</CardTitle>
+                  <p className="text-gray-600 mt-1">{profile?.email || 'Loading...'}</p>
                   <div className="flex items-center space-x-4 mt-2">
-                    <div className="text-sm text-gray-600">
-                      Member since: {formatDate(new Date(profile.createdAt))}
-                    </div>
-                    {profile.lastLoginAt && (
+                    {profile?.createdAt && (
+                      <div className="text-sm text-gray-600">
+                        Member since: {formatDate(new Date(profile.createdAt))}
+                      </div>
+                    )}
+                    {profile?.lastLoginAt && (
                       <div className="text-sm text-gray-600">
                         Last login: {formatDate(new Date(profile.lastLoginAt))}
                       </div>
