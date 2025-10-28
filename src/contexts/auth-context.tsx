@@ -91,7 +91,7 @@ const authApi = {
       if (!response.ok) {
         // Handle different error scenarios
         if (response.status === 0 || !response.status) {
-          throw new Error('Backend server is not running. Please start the backend server.');
+          throw new Error(`Cannot connect to API server at ${apiUrl}. Please check your network connection.`);
         }
         
         const error = await response.json().catch(() => ({ message: 'Login failed' }));
@@ -113,7 +113,7 @@ const authApi = {
       }
     } catch (error) {
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Cannot connect to backend server. Please ensure the backend is running on port 3000.');
+        throw new Error(`Cannot connect to API server at ${process.env.NEXT_PUBLIC_API_BASE_URL}. Please check your network connection.`);
       }
       throw error;
     }
@@ -202,7 +202,7 @@ const authApi = {
           throw new Error('Session expired');
         }
         if (response.status === 0 || !response.status) {
-          throw new Error('Backend server is not running. Please start the backend server.');
+          throw new Error(`Cannot connect to API server at ${process.env.NEXT_PUBLIC_API_BASE_URL}. Please check your network connection.`);
         }
         const error = await response.json().catch(() => ({ message: 'Failed to get user info' }));
         throw new Error(error.message || 'Failed to get user info');
@@ -217,7 +217,7 @@ const authApi = {
         throw new Error('Request timeout - please try again');
       }
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Cannot connect to backend server. Please ensure the backend is running on port 3000.');
+        throw new Error(`Cannot connect to API server at ${process.env.NEXT_PUBLIC_API_BASE_URL}. Please check your network connection.`);
       }
       throw error;
     }
@@ -336,7 +336,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Login error:', error);
       
       // If backend is not available, offer development mode
-      if (error instanceof Error && error.message.includes('backend server')) {
+      if (error instanceof Error && (error.message.includes('backend server') || error.message.includes('API server'))) {
         setState(prev => ({
           ...prev,
           isLoading: false,
