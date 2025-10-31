@@ -28,6 +28,7 @@ import { useProfile } from '@/hooks/use-profile';
 import { useCountries, useStates, useBanks } from '@/hooks/use-organizations';
 import { formatDate } from '@/lib/utils';
 import { ProfileUpdateDto } from '@/lib/api/profile-service';
+import { DatePickerField } from '@/components/form/date-picker-field';
 
 const profileSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -287,14 +288,13 @@ export default function ProfilePage() {
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="dob">Date of Birth</Label>
-                  <Input
-                    id="dob"
-                    type="date"
-                    {...form.register('dob')}
-                  />
-                </div>
+                <DatePickerField
+                  label="Date of Birth"
+                  id="dob"
+                  value={form.watch('dob')}
+                  onChange={(value) => form.setValue('dob', value)}
+                  error={form.formState.errors.dob}
+                />
 
                 <div className="md:col-span-2">
                   <Label htmlFor="email">Email</Label>
@@ -359,7 +359,7 @@ export default function ProfilePage() {
                       <SelectValue placeholder="Select country" />
                     </SelectTrigger>
                     <SelectContent>
-                      {countries.map((country) => (
+                      {(Array.isArray(countries) ? countries : []).map((country) => (
                         <SelectItem key={country.id} value={country.id}>
                           {country.name}
                         </SelectItem>
@@ -379,7 +379,7 @@ export default function ProfilePage() {
                       <SelectValue placeholder="Select state" />
                     </SelectTrigger>
                     <SelectContent>
-                      {states.map((state) => (
+                      {(Array.isArray(states) ? states : []).map((state) => (
                         <SelectItem key={state.id} value={state.id}>
                           {state.name}
                         </SelectItem>
@@ -421,7 +421,7 @@ export default function ProfilePage() {
                       <SelectValue placeholder="Select bank" />
                     </SelectTrigger>
                     <SelectContent>
-                      {banks.map((bank) => (
+                      {(Array.isArray(banks) ? banks : []).map((bank) => (
                         <SelectItem key={bank.id} value={bank.id}>
                           {bank.name}
                         </SelectItem>

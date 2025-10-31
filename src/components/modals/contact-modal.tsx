@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Contact, ContactType, ContactStatus } from '@/lib/api/contacts-service';
 import { useContactActions } from '@/hooks/use-contacts';
 import { Phone, Mail, MapPin, User, Building, Plus, Trash2, Calendar } from 'lucide-react';
+import { DatePickerField } from '@/components/form/date-picker-field';
 
 // Form validation schema
 const contactSchema = z.object({
@@ -221,15 +222,14 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave }: Contact
           </div>
 
           {form.watch('contactType') === ContactType.Client && (
-            <div>
-              <Label htmlFor="dob">Date of Birth</Label>
-              <Input
-                id="dob"
-                type="date"
-                {...form.register('dob')}
-                disabled={isReadOnly}
-              />
-            </div>
+            <DatePickerField
+              label="Date of Birth"
+              id="dob"
+              value={form.watch('dob')}
+              onChange={(value) => form.setValue('dob', value)}
+              error={form.formState.errors.dob}
+              disabled={isReadOnly}
+            />
           )}
         </div>
       </div>

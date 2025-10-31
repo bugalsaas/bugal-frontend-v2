@@ -24,6 +24,7 @@ import {
   Attachment 
 } from '@/lib/api/shifts-service';
 import { useShiftActions } from '@/hooks/use-shifts';
+import { DatePickerInputField } from '@/components/form/date-picker-input-field';
 import { 
   Calendar, 
   Clock, 
@@ -305,18 +306,14 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
       <div>
         <h3 className="text-lg font-semibold mb-4">Schedule</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="startDate">Date *</Label>
-            <Input
-              id="startDate"
-              type="date"
-              {...form.register('startDate')}
-              disabled={isReadOnly}
-            />
-            {form.formState.errors.startDate && (
-              <p className="text-red-500 text-sm mt-1">{form.formState.errors.startDate.message}</p>
-            )}
-          </div>
+          <DatePickerInputField
+            label="Date *"
+            id="startDate"
+            value={form.watch('startDate')}
+            onChange={(value) => form.setValue('startDate', value)}
+            error={form.formState.errors.startDate}
+            disabled={isReadOnly}
+          />
 
           <div>
             <Label htmlFor="startTime">Start Time *</Label>

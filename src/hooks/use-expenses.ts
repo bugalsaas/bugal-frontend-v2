@@ -119,8 +119,7 @@ export function useExpenseActions() {
   };
 
   const deleteAttachment = async (expenseId: string, attachmentId: string): Promise<void> => {
-      await expensesApi.deleteAttachment(expenseId, attachmentId);
-    }
+    await expensesApi.deleteAttachment(expenseId, attachmentId);
   };
 
   const selectExpense = (expense: Expense) => {

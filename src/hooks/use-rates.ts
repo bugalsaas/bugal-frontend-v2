@@ -47,27 +47,24 @@ export function useRates(options: UseRatesOptions = {}) {
       const counter = [diffSearch, diffRateType, diffArchived].filter(Boolean).length;
       setFilterCounter(counter);
 
-      let response: RateListResponse;
+      const response: RateListResponse = await ratesApi.getAll(filtersToApply);
 
-      // Always use mock data for now to ensure we can test the UI
-      console.log('Using mock rates data for testing');
-      response = await ratesApi.getAll(filtersToApply);
+      // Apply client-side filtering for fields not supported by backend query
+      let filtered = response.data;
+      if (filters.rateType) {
+        filtered = filtered.filter(r => r.rateType === filters.rateType);
+      }
+      if (filters.isArchived === false || filters.isArchived === undefined) {
+        filtered = filtered.filter(r => !r.isArchived);
+      }
 
-      setData(response.data);
-      setTotal(response.meta.total);
+      setData(filtered);
+      setTotal(filtered.length);
     } catch (error) {
       console.error('Rates fetch error:', error);
       
-      // Fallback to mock data on API error
-      console.log('API error, falling back to mock data');
-      try {
-        const fallbackResponse = await ratesApi.getAll(filters);
-        setData(fallbackResponse.data);
-        setTotal(fallbackResponse.meta.total);
-      } catch (fallbackError) {
-        setData([]);
-        setTotal(0);
-      }
+      setData([]);
+      setTotal(0);
       
       setError(error instanceof Error ? error.message : 'Failed to load rates');
     } finally {

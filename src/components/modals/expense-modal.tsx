@@ -38,6 +38,7 @@ import {
   CheckCircle,
   Plus,
 } from 'lucide-react';
+import { DatePickerInputField } from '@/components/form/date-picker-input-field';
 
 // Form validation schema
 const expenseSchema = z.object({
@@ -313,18 +314,14 @@ export function ExpenseModal({ isOpen, onClose, mode, expense, onSave }: Expense
           </Select>
         </div>
 
-        <div>
-          <Label htmlFor="date">Date *</Label>
-          <Input
-            id="date"
-            type="date"
-            {...form.register('date')}
-            disabled={isReadOnly}
-          />
-          {form.formState.errors.date && (
-            <p className="text-red-500 text-sm mt-1">{form.formState.errors.date.message}</p>
-          )}
-        </div>
+        <DatePickerInputField
+          label="Date *"
+          id="date"
+          value={form.watch('date')}
+          onChange={(value) => form.setValue('date', value)}
+          error={form.formState.errors.date}
+          disabled={isReadOnly}
+        />
 
         <div>
           <Label htmlFor="amountInclGst">Amount (incl. GST) *</Label>

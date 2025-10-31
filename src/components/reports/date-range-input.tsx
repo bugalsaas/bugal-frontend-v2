@@ -43,11 +43,12 @@ export function DateRangeInput({
                 {startDate ? format(startDate, 'PPP') : <span>Pick start date</span>}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
+            <PopoverContent align="start" sideOffset={4} className="w-auto p-0 z-50 border bg-white shadow-md">
               <CalendarComponent
                 mode="single"
                 selected={startDate}
                 onSelect={onStartDateChange}
+                captionLayout="dropdown"
                 initialFocus
               />
             </PopoverContent>
@@ -70,11 +71,12 @@ export function DateRangeInput({
                 {endDate ? format(endDate, 'PPP') : <span>Pick end date</span>}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
+            <PopoverContent align="start" sideOffset={4} className="w-auto p-0 z-50 border bg-white shadow-md">
               <CalendarComponent
                 mode="single"
                 selected={endDate}
                 onSelect={onEndDateChange}
+                captionLayout="dropdown"
                 initialFocus
               />
             </PopoverContent>

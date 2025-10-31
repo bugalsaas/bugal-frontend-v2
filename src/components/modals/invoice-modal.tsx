@@ -36,6 +36,7 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
+import { DatePickerInputField } from '@/components/form/date-picker-input-field';
 
 // Form validation schema
 const invoiceSchema = z.object({
@@ -226,31 +227,23 @@ export function InvoiceModal({ isOpen, onClose, mode, invoice, onSave }: Invoice
             )}
           </div>
 
-          <div>
-            <Label htmlFor="date">Invoice Date *</Label>
-            <Input
-              id="date"
-              type="date"
-              {...form.register('date')}
-              disabled={isReadOnly}
-            />
-            {form.formState.errors.date && (
-              <p className="text-red-500 text-sm mt-1">{form.formState.errors.date.message}</p>
-            )}
-          </div>
+          <DatePickerInputField
+            label="Invoice Date *"
+            id="date"
+            value={form.watch('date')}
+            onChange={(value) => form.setValue('date', value)}
+            error={form.formState.errors.date}
+            disabled={isReadOnly}
+          />
 
-          <div>
-            <Label htmlFor="dueDate">Due Date *</Label>
-            <Input
-              id="dueDate"
-              type="date"
-              {...form.register('dueDate')}
-              disabled={isReadOnly}
-            />
-            {form.formState.errors.dueDate && (
-              <p className="text-red-500 text-sm mt-1">{form.formState.errors.dueDate.message}</p>
-            )}
-          </div>
+          <DatePickerInputField
+            label="Due Date *"
+            id="dueDate"
+            value={form.watch('dueDate')}
+            onChange={(value) => form.setValue('dueDate', value)}
+            error={form.formState.errors.dueDate}
+            disabled={isReadOnly}
+          />
         </div>
       </div>
 

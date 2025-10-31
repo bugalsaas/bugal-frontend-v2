@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Incident, IncidentWitness } from '@/lib/api/incidents-service';
 import { formatDate } from '@/lib/utils';
+import { DateTimePickerField } from '@/components/form/date-time-picker-field';
 import { 
   AlertTriangle,
   User,
@@ -374,18 +375,15 @@ export function IncidentModal({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Incident Date & Time</Label>
-                    <Input
-                      id="date"
-                      type="datetime-local"
-                      {...form.register('date')}
-                      disabled={isLoading}
-                    />
-                    {errors.date && (
-                      <p className="text-red-500 text-sm">{errors.date.message}</p>
-                    )}
-                  </div>
+                  <DateTimePickerField
+                    label="Incident Date & Time"
+                    dateId="date"
+                    timeId="date-time"
+                    value={form.watch('date')}
+                    onChange={(value) => form.setValue('date', value)}
+                    error={errors.date}
+                    disabled={isLoading}
+                  />
                   <div className="space-y-2">
                     <Label htmlFor="location">Location</Label>
                     <Input
@@ -620,15 +618,15 @@ export function IncidentModal({
                           disabled={isLoading}
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="supervisorReportDate">Date & Time Reported</Label>
-                        <Input
-                          id="supervisorReportDate"
-                          type="datetime-local"
-                          {...form.register('supervisorReportDate')}
-                          disabled={isLoading}
-                        />
-                      </div>
+                      <DateTimePickerField
+                        label="Date & Time Reported"
+                        dateId="supervisorReportDate"
+                        timeId="supervisorReportDate-time"
+                        value={form.watch('supervisorReportDate')}
+                        onChange={(value) => form.setValue('supervisorReportDate', value)}
+                        error={errors.supervisorReportDate}
+                        disabled={isLoading}
+                      />
                     </div>
                   )}
                 </div>
@@ -683,15 +681,15 @@ export function IncidentModal({
                       </div>
                       
                       {watchedValues.wasNDISReported && (
-                        <div className="space-y-2">
-                          <Label htmlFor="dateNDISReport">Date & Time Reported to NDIS</Label>
-                          <Input
-                            id="dateNDISReport"
-                            type="datetime-local"
-                            {...form.register('dateNDISReport')}
-                            disabled={isLoading}
-                          />
-                        </div>
+                        <DateTimePickerField
+                          label="Date & Time Reported to NDIS"
+                          dateId="dateNDISReport"
+                          timeId="dateNDISReport-time"
+                          value={form.watch('dateNDISReport')}
+                          onChange={(value) => form.setValue('dateNDISReport', value)}
+                          error={errors.dateNDISReport}
+                          disabled={isLoading}
+                        />
                       )}
                     </div>
                   )}

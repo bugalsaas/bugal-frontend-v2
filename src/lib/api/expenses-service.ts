@@ -97,36 +97,7 @@ export interface ExpenseListResponse {
 
 export const expensesApi = {
   async getAll(filters: ExpenseFilters = {}): Promise<ExpenseListResponse> {
-    // Check if we're in development mode
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      console.log('Using mock expenses data for development');
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
-      
-      let filteredExpenses = mockExpensesData;
-      
-      // Apply filters to mock data
-      if (filters.type) {
-        filteredExpenses = filteredExpenses.filter(exp => exp.expenseType === filters.type);
-      }
-      if (filters.contact) {
-        filteredExpenses = filteredExpenses.filter(exp => exp.idContact === filters.contact);
-      }
-      if (filters.from) {
-        filteredExpenses = filteredExpenses.filter(exp => new Date(exp.date) >= new Date(filters.from!));
-      }
-      if (filters.to) {
-        filteredExpenses = filteredExpenses.filter(exp => new Date(exp.date) <= new Date(filters.to!));
-      }
-      
-      return {
-        data: filteredExpenses,
-        meta: {
-          total: filteredExpenses.length,
-          pageNumber: filters.pageNumber || 1,
-          pageSize: filters.pageSize || 100,
-        },
-      };
-    }
+    // Always use real API
 
     const token = getToken();
     if (!token) throw new Error('No authentication token');

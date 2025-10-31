@@ -21,6 +21,7 @@ import {
   AlertCircle,
   CheckCircle,
 } from 'lucide-react';
+import { DatePickerInputField } from '@/components/form/date-picker-input-field';
 
 // Form validation schema
 const paymentSchema = z.object({
@@ -120,17 +121,13 @@ export function PaymentModal({ isOpen, onClose, mode, invoiceId, outstandingAmou
           {/* Payment Details */}
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="date">Date *</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  {...form.register('date')}
-                />
-                {form.formState.errors.date && (
-                  <p className="text-red-500 text-sm mt-1">{form.formState.errors.date.message}</p>
-                )}
-              </div>
+              <DatePickerInputField
+                label="Date *"
+                id="date"
+                value={form.watch('date')}
+                onChange={(value) => form.setValue('date', value)}
+                error={form.formState.errors.date}
+              />
 
               <div>
                 <Label htmlFor="amountInclGst">

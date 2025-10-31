@@ -113,7 +113,7 @@ export default function IncidentsReportPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="-1">All Contacts</SelectItem>
-                  {contacts.map((contact) => (
+                  {(contacts ?? []).map((contact) => (
                     <SelectItem key={contact.id} value={contact.id}>
                       {contact.fullName}
                     </SelectItem>

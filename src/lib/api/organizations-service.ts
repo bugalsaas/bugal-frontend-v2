@@ -164,215 +164,26 @@ export interface OrganizationUsersListResponse {
   };
 }
 
-// Mock data for development
-const mockCountries: Country[] = [
-  { id: '1', name: 'Australia', code: 'AU' },
-  { id: '2', name: 'New Zealand', code: 'NZ' },
-];
-
-const mockStates: State[] = [
-  { id: '1', name: 'New South Wales', code: 'NSW', idCountry: '1' },
-  { id: '2', name: 'Victoria', code: 'VIC', idCountry: '1' },
-  { id: '3', name: 'Queensland', code: 'QLD', idCountry: '1' },
-  { id: '4', name: 'Western Australia', code: 'WA', idCountry: '1' },
-  { id: '5', name: 'South Australia', code: 'SA', idCountry: '1' },
-  { id: '6', name: 'Tasmania', code: 'TAS', idCountry: '1' },
-  { id: '7', name: 'Australian Capital Territory', code: 'ACT', idCountry: '1' },
-  { id: '8', name: 'Northern Territory', code: 'NT', idCountry: '1' },
-];
-
-const mockBanks: Bank[] = [
-  { id: '1', name: 'Commonwealth Bank', code: 'CBA' },
-  { id: '2', name: 'Westpac', code: 'WBC' },
-  { id: '3', name: 'ANZ', code: 'ANZ' },
-  { id: '4', name: 'National Australia Bank', code: 'NAB' },
-  { id: '5', name: 'Other', code: 'OTHER' },
-];
-
-const mockRoles: Role[] = [
-  {
-    id: '1',
-    idOrganization: '1',
-    name: 'Owner',
-    description: 'Full access to all features',
-    permissions: ['all'],
-    isDefault: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: '2',
-    idOrganization: '1',
-    name: 'Manager',
-    description: 'Manage shifts, contacts, and invoices',
-    permissions: ['shifts', 'contacts', 'invoices'],
-    isDefault: false,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: '3',
-    idOrganization: '1',
-    name: 'Staff',
-    description: 'View and update shifts',
-    permissions: ['shifts:view', 'shifts:update'],
-    isDefault: false,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-];
-
-const mockOrganizations: Organization[] = [
-  {
-    id: '1',
-    name: 'Bugal Care Services',
-    email: 'admin@bugal.com.au',
-    organizationType: OrganizationType.Company,
-    isGstRegistered: true,
-    country: mockCountries[0],
-    idCountry: '1',
-    idState: '1',
-    timezone: 'Australia/Sydney',
-    phoneNumber: '+61 2 1234 5678',
-    addressLine1: '123 Business Street',
-    addressLine2: 'Suite 100',
-    postcode: '2000',
-    abn: '12345678901',
-    paymentTerms: 30,
-    invoicePrefix: 'BCS',
-    bankName: mockBanks[0],
-    bankBsb: '062-000',
-    bankAccountNumber: '12345678',
-    referralCode: 'BUGAL2024',
-    subscriptionStatus: SubscriptionStatus.Active,
-    createdAt: '2024-01-01T00:00:00Z',
-    trialEndDate: '2024-12-31T23:59:59Z',
-  },
-  {
-    id: '2',
-    name: 'Sarah Johnson Care',
-    email: 'sarah@example.com',
-    organizationType: OrganizationType.SoleTrader,
-    isGstRegistered: false,
-    country: mockCountries[0],
-    idCountry: '1',
-    idState: '2',
-    timezone: 'Australia/Melbourne',
-    phoneNumber: '+61 3 9876 5432',
-    addressLine1: '456 Home Street',
-    postcode: '3000',
-    abn: '98765432109',
-    paymentTerms: 14,
-    invoicePrefix: 'SJC',
-    bankName: mockBanks[1],
-    bankBsb: '033-000',
-    bankAccountNumber: '87654321',
-    referralCode: 'SARAH2024',
-    subscriptionStatus: SubscriptionStatus.Trial,
-    createdAt: '2024-02-01T00:00:00Z',
-    trialEndDate: '2024-12-31T23:59:59Z',
-  },
-];
-
-const mockOrganizationUsers: OrganizationUser[] = [
-  {
-    id: '1',
-    idOrganization: '1',
-    idRole: '1',
-    firstName: 'Andrew',
-    lastName: 'Giles',
-    fullName: 'Andrew Giles',
-    email: 'andrew@bugal.com.au',
-    initials: 'AG',
-    color: '#3B82F6',
-    status: OrganizationUserStatus.Active,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-    role: mockRoles[0],
-  },
-  {
-    id: '2',
-    idOrganization: '1',
-    idRole: '2',
-    firstName: 'Sarah',
-    lastName: 'Johnson',
-    fullName: 'Sarah Johnson',
-    email: 'sarah@bugal.com.au',
-    initials: 'SJ',
-    color: '#10B981',
-    status: OrganizationUserStatus.Active,
-    createdAt: '2024-01-15T00:00:00Z',
-    updatedAt: '2024-01-15T00:00:00Z',
-    role: mockRoles[1],
-  },
-  {
-    id: '3',
-    idOrganization: '1',
-    idRole: '3',
-    firstName: 'Mike',
-    lastName: 'Wilson',
-    fullName: 'Mike Wilson',
-    email: 'mike@bugal.com.au',
-    initials: 'MW',
-    color: '#F59E0B',
-    status: OrganizationUserStatus.Invited,
-    createdAt: '2024-02-01T00:00:00Z',
-    updatedAt: '2024-02-01T00:00:00Z',
-    role: mockRoles[2],
-  },
-  {
-    id: '4',
-    idOrganization: '1',
-    idRole: '3',
-    firstName: 'Emma',
-    lastName: 'Davis',
-    fullName: 'Emma Davis',
-    email: 'emma@bugal.com.au',
-    initials: 'ED',
-    color: '#EF4444',
-    status: OrganizationUserStatus.Disabled,
-    disabledAt: '2024-01-20T00:00:00Z',
-    createdAt: '2024-01-10T00:00:00Z',
-    updatedAt: '2024-01-20T00:00:00Z',
-    role: mockRoles[2],
-  },
-];
-
-const mockOrganizationsResponse: OrganizationListResponse = {
-  data: mockOrganizations,
-  meta: {
-    total: mockOrganizations.length,
-    page: 1,
-    pageSize: 10,
-  },
-};
-
-const mockOrganizationUsersResponse: OrganizationUsersListResponse = {
-  data: mockOrganizationUsers,
-  meta: {
-    total: mockOrganizationUsers.length,
-    page: 1,
-    pageSize: 10,
-  },
-};
+// All data is sourced from the real API
 
 // API functions
 export const organizationsApi = {
   // Organizations
   getAll: async (filters?: { page?: number; pageSize?: number; text?: string }): Promise<OrganizationListResponse> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      return mockOrganizationsResponse;
-    }
-    
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
+
     const params = new URLSearchParams();
     if (filters?.page) params.append('page', filters.page.toString());
     if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString());
     if (filters?.text) params.append('text', filters.text);
-    
-    const response = await fetch(`/api/organizations?${params}`, {
-      headers: { 'Content-Type': 'application/json' },
+
+    const response = await fetch(`${API_BASE_URL}/organizations?${params}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
-    
     if (!response.ok) throw new Error('Failed to fetch organizations');
     return response.json();
   },
@@ -461,19 +272,20 @@ export const organizationsApi = {
 
   // Organization Users (Staff)
   getAllUsers: async (idOrganization: string, filters?: { page?: number; pageSize?: number; text?: string }): Promise<OrganizationUsersListResponse> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      return mockOrganizationUsersResponse;
-    }
-    
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
+
     const params = new URLSearchParams();
     if (filters?.page) params.append('page', filters.page.toString());
     if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString());
     if (filters?.text) params.append('text', filters.text);
-    
-    const response = await fetch(`/api/organizations/${idOrganization}/users?${params}`, {
-      headers: { 'Content-Type': 'application/json' },
+
+    const response = await fetch(`${API_BASE_URL}/organizations/${idOrganization}/users?${params}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
-    
     if (!response.ok) throw new Error('Failed to fetch organization users');
     return response.json();
   },
@@ -572,54 +384,58 @@ export const organizationsApi = {
 
   // Roles
   getRoles: async (idOrganization: string): Promise<Role[]> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      return mockRoles;
-    }
-    
-    const response = await fetch(`/api/organizations/${idOrganization}/roles`, {
-      headers: { 'Content-Type': 'application/json' },
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
+
+    const response = await fetch(`${API_BASE_URL}/organizations/${idOrganization}/roles`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
-    
     if (!response.ok) throw new Error('Failed to fetch roles');
     return response.json();
   },
 
   // Countries, States, Banks
   getCountries: async (): Promise<Country[]> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      return mockCountries;
-    }
-    
-    const response = await fetch('/api/countries', {
-      headers: { 'Content-Type': 'application/json' },
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
+
+    const response = await fetch(`${API_BASE_URL}/countries`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
-    
     if (!response.ok) throw new Error('Failed to fetch countries');
     return response.json();
   },
 
   getStates: async (idCountry: string): Promise<State[]> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      return mockStates.filter(s => s.idCountry === idCountry);
-    }
-    
-    const response = await fetch(`/api/countries/${idCountry}/states`, {
-      headers: { 'Content-Type': 'application/json' },
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
+
+    const response = await fetch(`${API_BASE_URL}/countries/${idCountry}/states`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
-    
     if (!response.ok) throw new Error('Failed to fetch states');
     return response.json();
   },
 
   getBanks: async (): Promise<Bank[]> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      return mockBanks;
-    }
-    
-    const response = await fetch('/api/banks', {
-      headers: { 'Content-Type': 'application/json' },
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
+
+    const response = await fetch(`${API_BASE_URL}/banks`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
-    
     if (!response.ok) throw new Error('Failed to fetch banks');
     return response.json();
   },

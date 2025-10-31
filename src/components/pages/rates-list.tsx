@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useRates } from '@/hooks/use-rates';
 import { Rate, RateType } from '@/lib/api/rates-service';
 import { formatCurrency } from '@/lib/utils';
@@ -16,6 +16,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface RatesListProps {
   onViewRate?: (rate: Rate) => void;
@@ -30,7 +33,15 @@ export function RatesList({
   onDeleteRate, 
   onArchiveRate 
 }: RatesListProps) {
-  const { data: rates, loading, error, total, filterCounter, filters, setFilters } = useRates();
+  const { data: rates, loading, error, total, filterCounter, filters, setFilters, pagination, setPagination } = useRates();
+
+  const currentPage = pagination.pageNumber || 1;
+  const pageSize = pagination.pageSize || 100;
+
+  const totalPages = useMemo(() => {
+    if (!total || !pageSize) return 1;
+    return Math.max(1, Math.ceil(total / pageSize));
+  }, [total, pageSize]);
 
   const handleViewRate = (rate: Rate) => {
     if (onViewRate) {
@@ -104,6 +115,48 @@ export function RatesList({
 
   return (
     <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <div className="flex-1 flex flex-col md:flex-row gap-3">
+          <div className="md:w-72">
+            <label className="block text-xs text-gray-600 mb-1">Search</label>
+            <Input
+              placeholder="Start typing to filter results"
+              value={filters.search || ''}
+              onChange={(e) => setFilters({ search: e.target.value })}
+            />
+          </div>
+          <div className="md:w-48">
+            <label className="block text-xs text-gray-600 mb-1">Type</label>
+            <Select
+              value={filters.rateType || 'all'}
+              onValueChange={(v) => setFilters({ rateType: v === 'all' ? undefined : (v as RateType) })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value={RateType.Hourly}>Hourly</SelectItem>
+                <SelectItem value={RateType.Fixed}>Fixed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2 mt-1 md:mt-0">
+            <Checkbox
+              id="archived"
+              checked={!!filters.isArchived}
+              onCheckedChange={(v) => setFilters({ isArchived: !!v })}
+            />
+            <label htmlFor="archived" className="text-sm text-gray-700">Show archived</label>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {filterCounter > 0 && (
+            <Button variant="secondary" onClick={() => setFilters({ search: '', rateType: undefined, isArchived: false })}>Clear</Button>
+          )}
+        </div>
+      </div>
       {/* Filter Summary */}
       {filterCounter > 0 && (
         <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -112,106 +165,89 @@ export function RatesList({
         </div>
       )}
 
-      {/* Rates Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {rates.map((rate) => (
-          <div
-            key={rate.id}
-            className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => handleViewRate(rate)}
-          >
-            {/* Header */}
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                {getRateTypeIcon(rate.rateType)}
-                <Badge className={getRateTypeColor(rate.rateType)}>
-                  {rate.rateType}
-                </Badge>
-              </div>
-              {rate.isArchived && (
-                <Badge variant="outline" className="text-gray-500">
-                  Archived
-                </Badge>
-              )}
-            </div>
-
-            {/* Rate Details */}
-            <div className="space-y-3">
-              <div>
-                <h3 className="font-semibold text-gray-900 text-lg">{rate.name}</h3>
-                {rate.description && (
-                  <p className="text-gray-600 text-sm mt-1 line-clamp-2">{rate.description}</p>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Amount (excl. GST)</p>
-                  <p className="font-semibold text-gray-900">{formatCurrency(rate.amountExclGst)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">Total (incl. GST)</p>
-                  <p className="font-semibold text-gray-900">{formatCurrency(rate.amountInclGst)}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-end space-x-2 mt-4 pt-4 border-t border-gray-100">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleViewRate(rate);
-                }}
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditRate(rate);
-                }}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              {!rate.isArchived && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleArchiveRate(rate);
-                  }}
-                >
-                  <Archive className="h-4 w-4" />
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteRate(rate);
-                }}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
+      {/* Rates Table (responsive) */}
+      <div className="overflow-x-auto bg-white border border-gray-200 rounded-lg">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount (excl. GST)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total (incl. GST)</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {rates.map((rate) => (
+              <tr key={rate.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    {getRateTypeIcon(rate.rateType)}
+                    <Badge className={getRateTypeColor(rate.rateType)}>{rate.rateType}</Badge>
+                    {rate.isArchived && (
+                      <Badge variant="outline" className="text-gray-500">Archived</Badge>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="font-medium text-gray-900">{rate.name}</div>
+                  {rate.description && (
+                    <div className="text-sm text-gray-500 truncate max-w-xs">{rate.description}</div>
+                  )}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">{formatCurrency(rate.amountExclGst)}</td>
+                <td className="px-4 py-3 whitespace-nowrap">{formatCurrency(rate.amountInclGst)}</td>
+                <td className="px-4 py-3 whitespace-nowrap text-right">
+                  <div className="inline-flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => handleViewRate(rate)}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleEditRate(rate)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    {!rate.isArchived && (
+                      <Button variant="ghost" size="sm" onClick={() => handleArchiveRate(rate)}>
+                        <Archive className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteRate(rate)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* Pagination Info */}
-      {total > rates.length && (
-        <div className="text-center text-sm text-gray-600">
+      {/* Pagination */}
+      <div className="flex items-center justify-between text-sm text-gray-600">
+        <div>
           Showing {rates.length} of {total} rates
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage <= 1}
+            onClick={() => setPagination({ pageNumber: currentPage - 1 })}
+          >
+            Prev
+          </Button>
+          <span>
+            Page {currentPage} / {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage >= totalPages}
+            onClick={() => setPagination({ pageNumber: currentPage + 1 })}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
