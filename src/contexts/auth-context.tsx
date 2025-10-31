@@ -278,17 +278,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const meResponse = await authApi.getMe();
             console.log('Token valid, user:', meResponse);
             // Extract user data and scopes from /me response
-            const userData = meResponse.user || meResponse;
+            const userData: unknown = (meResponse as { user?: unknown }).user || meResponse;
+            const ud = userData as Record<string, unknown>;
             const getUserName = () => {
-              if (userData.fullName) return userData.fullName;
-              if (userData.firstName || userData.lastName) {
-                return `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+              if (ud.fullName && typeof ud.fullName === 'string') return ud.fullName;
+              const fn = ud.firstName;
+              const ln = ud.lastName;
+              if ((fn && typeof fn === 'string') || (ln && typeof ln === 'string')) {
+                return `${fn || ''} ${ln || ''}`.trim();
               }
-              if (userData.name) return userData.name;
-              return userData.email?.split('@')[0] || 'User';
+              if (ud.name && typeof ud.name === 'string') return ud.name;
+              const email = ud.email;
+              if (email && typeof email === 'string') return email.split('@')[0];
+              return 'User';
             };
             const getInitials = () => {
-              if (userData.initials) return userData.initials;
+              if (ud.initials && typeof ud.initials === 'string') return ud.initials;
               const name = getUserName();
               const parts = name.trim().split(/\s+/);
               if (parts.length >= 2) {
@@ -297,21 +302,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (parts.length === 1 && parts[0].length > 0) {
                 return parts[0].substring(0, 2).toUpperCase();
               }
-              return userData.email?.[0]?.toUpperCase() || 'U';
+              const email = ud.email;
+              if (email && typeof email === 'string') return email[0]?.toUpperCase() || 'U';
+              return 'U';
             };
+            const meResp = meResponse as { scopes?: string[]; organization?: { id: string; name: string; organizationType?: string; type?: string }; organizations?: Array<{ id: string; name: string }> };
             const freshUser: User = {
-              ...userData,
-              firstName: userData.firstName,
-              lastName: userData.lastName,
+              ...ud as User,
+              firstName: ud.firstName as string | undefined,
+              lastName: ud.lastName as string | undefined,
               fullName: getUserName(),
               name: getUserName(),
               initials: getInitials(),
-              scopes: meResponse.scopes || [],
-              organization: meResponse.organization
+              scopes: meResp.scopes || [],
+              organization: meResp.organization
                 ? {
-                    id: meResponse.organization.id,
-                    name: meResponse.organization.name,
-                    type: (meResponse.organization as any).organizationType || (meResponse.organization as any).type || '',
+                    id: meResp.organization.id,
+                    name: meResp.organization.name,
+                    type: meResp.organization.organizationType || meResp.organization.type || '',
                   }
                 : undefined,
             };
@@ -321,7 +329,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               isAuthenticated: true,
               isLoading: false,
               error: null,
-              organizations: (meResponse.organizations || []).map((o: any) => ({ id: o.id, name: o.name })),
+              organizations: (meResp.organizations || []).map((o) => ({ id: o.id, name: o.name })),
             });
             
             // Redirect to dashboard if we're on sign-in page
@@ -385,17 +393,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Fetch user data after successful login
       const meResponse = await authApi.getMe();
       // Extract user data and scopes from /me response
-      const userData = meResponse.user || meResponse;
+      const userData: unknown = (meResponse as { user?: unknown }).user || meResponse;
+      const ud = userData as Record<string, unknown>;
       const getUserName = () => {
-        if (userData.fullName) return userData.fullName;
-        if (userData.firstName || userData.lastName) {
-          return `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+        if (ud.fullName && typeof ud.fullName === 'string') return ud.fullName;
+        const fn = ud.firstName;
+        const ln = ud.lastName;
+        if ((fn && typeof fn === 'string') || (ln && typeof ln === 'string')) {
+          return `${fn || ''} ${ln || ''}`.trim();
         }
-        if (userData.name) return userData.name;
-        return userData.email?.split('@')[0] || 'User';
+        if (ud.name && typeof ud.name === 'string') return ud.name;
+        const email = ud.email;
+        if (email && typeof email === 'string') return email.split('@')[0];
+        return 'User';
       };
       const getInitials = () => {
-        if (userData.initials) return userData.initials;
+        if (ud.initials && typeof ud.initials === 'string') return ud.initials;
         const name = getUserName();
         const parts = name.trim().split(/\s+/);
         if (parts.length >= 2) {
@@ -404,21 +417,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (parts.length === 1 && parts[0].length > 0) {
           return parts[0].substring(0, 2).toUpperCase();
         }
-        return userData.email?.[0]?.toUpperCase() || 'U';
+        const email = ud.email;
+        if (email && typeof email === 'string') return email[0]?.toUpperCase() || 'U';
+        return 'U';
       };
+      const meResp = meResponse as { scopes?: string[]; organization?: { id: string; name: string; organizationType?: string; type?: string }; organizations?: Array<{ id: string; name: string }> };
       const user: User = {
-        ...userData,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
+        ...ud as User,
+        firstName: ud.firstName as string | undefined,
+        lastName: ud.lastName as string | undefined,
         fullName: getUserName(),
         name: getUserName(),
         initials: getInitials(),
-        scopes: meResponse.scopes || [],
-        organization: meResponse.organization
+        scopes: meResp.scopes || [],
+        organization: meResp.organization
           ? {
-              id: meResponse.organization.id,
-              name: meResponse.organization.name,
-              type: (meResponse.organization as any).organizationType || (meResponse.organization as any).type || '',
+              id: meResp.organization.id,
+              name: meResp.organization.name,
+              type: meResp.organization.organizationType || meResp.organization.type || '',
             }
           : undefined,
       };
@@ -430,7 +446,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        organizations: (meResponse.organizations || []).map((o: any) => ({ id: o.id, name: o.name })),
+        organizations: (meResp.organizations || []).map((o) => ({ id: o.id, name: o.name })),
       });
 
       router.push('/');
@@ -553,17 +569,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const meResponse = await authApi.getMe();
       // Extract user data and scopes from /me response
-      const userData = meResponse.user || meResponse;
+      const userData: unknown = (meResponse as { user?: unknown }).user || meResponse;
+      const ud = userData as Record<string, unknown>;
       const getUserName = () => {
-        if (userData.fullName) return userData.fullName;
-        if (userData.firstName || userData.lastName) {
-          return `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+        if (ud.fullName && typeof ud.fullName === 'string') return ud.fullName;
+        const fn = ud.firstName;
+        const ln = ud.lastName;
+        if ((fn && typeof fn === 'string') || (ln && typeof ln === 'string')) {
+          return `${fn || ''} ${ln || ''}`.trim();
         }
-        if (userData.name) return userData.name;
-        return userData.email?.split('@')[0] || 'User';
+        if (ud.name && typeof ud.name === 'string') return ud.name;
+        const email = ud.email;
+        if (email && typeof email === 'string') return email.split('@')[0];
+        return 'User';
       };
       const getInitials = () => {
-        if (userData.initials) return userData.initials;
+        if (ud.initials && typeof ud.initials === 'string') return ud.initials;
         const name = getUserName();
         const parts = name.trim().split(/\s+/);
         if (parts.length >= 2) {
@@ -572,21 +593,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (parts.length === 1 && parts[0].length > 0) {
           return parts[0].substring(0, 2).toUpperCase();
         }
-        return userData.email?.[0]?.toUpperCase() || 'U';
+        const email = ud.email;
+        if (email && typeof email === 'string') return email[0]?.toUpperCase() || 'U';
+        return 'U';
       };
+      const meResp = meResponse as { scopes?: string[]; organization?: { id: string; name: string; organizationType?: string; type?: string }; organizations?: Array<{ id: string; name: string }> };
       const user: User = {
-        ...userData,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
+        ...ud as User,
+        firstName: ud.firstName as string | undefined,
+        lastName: ud.lastName as string | undefined,
         fullName: getUserName(),
         name: getUserName(),
         initials: getInitials(),
-        scopes: meResponse.scopes || [],
-        organization: meResponse.organization
+        scopes: meResp.scopes || [],
+        organization: meResp.organization
           ? {
-              id: meResponse.organization.id,
-              name: meResponse.organization.name,
-              type: (meResponse.organization as any).organizationType || (meResponse.organization as any).type || '',
+              id: meResp.organization.id,
+              name: meResp.organization.name,
+              type: meResp.organization.organizationType || meResp.organization.type || '',
             }
           : undefined,
       };
@@ -595,7 +619,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...prev,
         user,
         error: null,
-        organizations: (meResponse.organizations || []).map((o: any) => ({ id: o.id, name: o.name })),
+        organizations: (meResp.organizations || []).map((o) => ({ id: o.id, name: o.name })),
       }));
     } catch (error) {
       setState(prev => ({
