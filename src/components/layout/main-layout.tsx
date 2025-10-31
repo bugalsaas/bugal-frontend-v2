@@ -39,12 +39,19 @@ export function MainLayout({
   activeNavItem, 
   headerConfig,
   notifications = 0,
-  user = { name: "User", initials: "U" },
+  user,
   isAdmin = false
 }: MainLayoutProps & { isAdmin?: boolean }) {
   const router = useRouter();
   const { user: authUser, logout, organizations: authOrganizations, switchOrganization } = useAuth();
   const effectiveIsAdmin = isAdmin || (authUser?.isAdmin || false);
+  
+  // Use authUser data for display, with fallback to prop or defaults
+  const displayUser = user || (authUser ? {
+    name: authUser.fullName || authUser.name || 'User',
+    initials: authUser.initials || 'U',
+    avatar: authUser.avatar,
+  } : { name: "User", initials: "U" });
   const [searchTerm, setSearchTerm] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -217,14 +224,14 @@ export function MainLayout({
                   <DropdownMenuTrigger asChild>
                     <button className="flex items-center space-x-2 hover:bg-gray-100 rounded-lg px-2 py-1">
                       <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                        <span className="text-gray-600 text-sm font-medium">{user.initials}</span>
+                        <span className="text-gray-600 text-sm font-medium">{displayUser.initials}</span>
                       </div>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium">{user.name}</p>
+                        <p className="text-sm font-medium">{displayUser.name}</p>
                         <p className="text-xs text-gray-500">{authUser?.email}</p>
                       </div>
                     </DropdownMenuLabel>

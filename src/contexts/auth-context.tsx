@@ -8,6 +8,9 @@ export interface User {
   id: string;
   email: string;
   name?: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
   avatar?: string;
   initials?: string;
   isAdmin?: boolean; // Platform admin status
@@ -275,8 +278,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const meResponse = await authApi.getMe();
             console.log('Token valid, user:', meResponse);
             // Extract user data and scopes from /me response
+            const userData = meResponse.user || meResponse;
+            const getUserName = () => {
+              if (userData.fullName) return userData.fullName;
+              if (userData.firstName || userData.lastName) {
+                return `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+              }
+              if (userData.name) return userData.name;
+              return userData.email?.split('@')[0] || 'User';
+            };
+            const getInitials = () => {
+              if (userData.initials) return userData.initials;
+              const name = getUserName();
+              const parts = name.trim().split(/\s+/);
+              if (parts.length >= 2) {
+                return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+              }
+              if (parts.length === 1 && parts[0].length > 0) {
+                return parts[0].substring(0, 2).toUpperCase();
+              }
+              return userData.email?.[0]?.toUpperCase() || 'U';
+            };
             const freshUser: User = {
-              ...(meResponse.user || meResponse),
+              ...userData,
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              fullName: getUserName(),
+              name: getUserName(),
+              initials: getInitials(),
               scopes: meResponse.scopes || [],
               organization: meResponse.organization
                 ? {
@@ -356,8 +385,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Fetch user data after successful login
       const meResponse = await authApi.getMe();
       // Extract user data and scopes from /me response
+      const userData = meResponse.user || meResponse;
+      const getUserName = () => {
+        if (userData.fullName) return userData.fullName;
+        if (userData.firstName || userData.lastName) {
+          return `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+        }
+        if (userData.name) return userData.name;
+        return userData.email?.split('@')[0] || 'User';
+      };
+      const getInitials = () => {
+        if (userData.initials) return userData.initials;
+        const name = getUserName();
+        const parts = name.trim().split(/\s+/);
+        if (parts.length >= 2) {
+          return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        if (parts.length === 1 && parts[0].length > 0) {
+          return parts[0].substring(0, 2).toUpperCase();
+        }
+        return userData.email?.[0]?.toUpperCase() || 'U';
+      };
       const user: User = {
-        ...(meResponse.user || meResponse),
+        ...userData,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        fullName: getUserName(),
+        name: getUserName(),
+        initials: getInitials(),
         scopes: meResponse.scopes || [],
         organization: meResponse.organization
           ? {
@@ -498,8 +553,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const meResponse = await authApi.getMe();
       // Extract user data and scopes from /me response
+      const userData = meResponse.user || meResponse;
+      const getUserName = () => {
+        if (userData.fullName) return userData.fullName;
+        if (userData.firstName || userData.lastName) {
+          return `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+        }
+        if (userData.name) return userData.name;
+        return userData.email?.split('@')[0] || 'User';
+      };
+      const getInitials = () => {
+        if (userData.initials) return userData.initials;
+        const name = getUserName();
+        const parts = name.trim().split(/\s+/);
+        if (parts.length >= 2) {
+          return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        if (parts.length === 1 && parts[0].length > 0) {
+          return parts[0].substring(0, 2).toUpperCase();
+        }
+        return userData.email?.[0]?.toUpperCase() || 'U';
+      };
       const user: User = {
-        ...(meResponse.user || meResponse),
+        ...userData,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        fullName: getUserName(),
+        name: getUserName(),
+        initials: getInitials(),
         scopes: meResponse.scopes || [],
         organization: meResponse.organization
           ? {
