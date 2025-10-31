@@ -63,11 +63,11 @@ export function ContactsList({ onAddContact, onEditContact, onViewContact }: Con
   const getContactTypeIcon = (type: ContactType) => {
     switch (type) {
       case ContactType.Organisation:
-        return <Building className="h-4 w-4" />;
+        return <Building className="h-4 w-4 text-purple-600" />;
       case ContactType.Staff:
-        return <User className="h-4 w-4" />;
+        return <User className="h-4 w-4 text-green-600" />;
       default:
-        return <User className="h-4 w-4" />;
+        return <User className="h-4 w-4 text-blue-600" />;
     }
   };
 
@@ -142,19 +142,19 @@ export function ContactsList({ onAddContact, onEditContact, onViewContact }: Con
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
                   {contact.email && (
                     <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4" />
+                      <Mail className="h-4 w-4 text-gray-500" />
                       <span>{contact.email}</span>
                     </div>
                   )}
                   {contact.phone && (
                     <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
+                      <Phone className="h-4 w-4 text-gray-500" />
                       <span>{contact.phone}</span>
                     </div>
                   )}
                   {contact.addressLine1 && (
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
+                      <MapPin className="h-4 w-4 text-gray-500" />
                       <span>
                         {contact.addressLine1}
                         {contact.addressLine2 && `, ${contact.addressLine2}`}
@@ -164,7 +164,7 @@ export function ContactsList({ onAddContact, onEditContact, onViewContact }: Con
                     </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
+                    <Calendar className="h-4 w-4 text-gray-500" />
                     <span>Created: {new Date(contact.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
