@@ -574,28 +574,53 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave }: Contact
     </div>
   );
 
-  const renderViewMode = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          {contact?.contactType === ContactType.Organisation ? (
-            <Building className="h-8 w-8 text-purple-600" />
-          ) : (
-            <User className="h-8 w-8 text-blue-600" />
-          )}
-          <div>
-            <h3 className="text-xl font-semibold">{contact?.fullName}</h3>
-            <div className="flex items-center space-x-2">
-              <Badge variant="outline">{contact?.contactType}</Badge>
-              <Badge variant={contact?.status === ContactStatus.Active ? 'default' : 'secondary'}>
-                {contact?.status}
-              </Badge>
+  const renderViewMode = () => {
+    const anyContact = contact as any;
+    const stateLabel = (() => {
+      const s = contact?.state as any;
+      if (!s) return '';
+      if (typeof s === 'string') return s;
+      if (typeof s?.name === 'string') return s.name;
+      return String(s);
+    })();
+
+    return (
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            {contact?.contactType === ContactType.Organisation ? (
+              <Building className="h-8 w-8 text-purple-600" />
+            ) : (
+              <User className="h-8 w-8 text-blue-600" />
+            )}
+            <div>
+              <h3 className="text-xl font-semibold">{contact?.fullName}</h3>
+              <div className="flex items-center space-x-2">
+                <Badge variant="outline">{contact?.contactType}</Badge>
+                <Badge variant={contact?.status === ContactStatus.Active ? 'default' : 'secondary'}>
+                  {contact?.status}
+                </Badge>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Basic information */}
+        <div>
+          <h4 className="font-semibold mb-3">Basic information</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            {anyContact?.firstName && <div><span className="text-gray-500">Firstname</span><div>{anyContact.firstName}</div></div>}
+            {anyContact?.lastName && <div><span className="text-gray-500">Surname</span><div>{anyContact.lastName}</div></div>}
+            {anyContact?.ndisNumber && <div><span className="text-gray-500">NDIS number</span><div>{anyContact.ndisNumber}</div></div>}
+            {anyContact?.gender && <div><span className="text-gray-500">Gender</span><div>{anyContact.gender}</div></div>}
+            {(anyContact?.mobileNumber || contact?.phone) && (
+              <div><span className="text-gray-500">Mobile number</span><div>{anyContact.mobileNumber || contact?.phone}</div></div>
+            )}
+          </div>
+        </div>
+
+        {/* Contact information */}
         <div>
           <h4 className="font-semibold mb-3">Contact Information</h4>
           <div className="space-y-2">
@@ -605,20 +630,14 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave }: Contact
                 <span className="text-sm">{contact.email}</span>
               </div>
             )}
-            {contact?.phone && (
-              <div className="flex items-center space-x-2">
-                <Phone className="h-4 w-4 text-gray-500" />
-                <span className="text-sm">{contact.phone}</span>
-              </div>
-            )}
-            {contact?.addressLine1 && (
+            {(contact?.addressLine1 || contact?.addressLine2 || contact?.state || contact?.postcode) && (
               <div className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4 text-gray-500" />
                 <span className="text-sm">
-                  {contact.addressLine1}
-                  {contact.addressLine2 && `, ${contact.addressLine2}`}
-                  {contact.state && `, ${contact.state}`}
-                  {contact.postcode && ` ${contact.postcode}`}
+                  {contact?.addressLine1}
+                  {contact?.addressLine2 && `, ${contact.addressLine2}`}
+                  {stateLabel && `, ${stateLabel}`}
+                  {contact?.postcode && ` ${contact.postcode}`}
                 </span>
               </div>
             )}
@@ -631,6 +650,46 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave }: Contact
           </div>
         </div>
 
+        {/* Additional contact (client/organisation specific) */}
+        {contact?.contactType === ContactType.Client && (
+          <div>
+            <h4 className="font-semibold mb-3">Additional contact</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              {anyContact?.guardianName && <div><span className="text-gray-500">Name</span><div>{anyContact.guardianName}</div></div>}
+              {anyContact?.guardianEmail && <div><span className="text-gray-500">Email</span><div>{anyContact.guardianEmail}</div></div>}
+              {anyContact?.guardianPhone && <div><span className="text-gray-500">Phone number</span><div>{anyContact.guardianPhone}</div></div>}
+              {anyContact?.guardianRelationship && <div><span className="text-gray-500">Relationship</span><div>{anyContact.guardianRelationship}</div></div>}
+            </div>
+          </div>
+        )}
+
+        {contact?.contactType === ContactType.Organisation && (
+          <div>
+            <h4 className="font-semibold mb-3">Organisation contact</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              {anyContact?.organisationContactName && <div><span className="text-gray-500">Contact Name</span><div>{anyContact.organisationContactName}</div></div>}
+              {anyContact?.organisationContactEmail && <div><span className="text-gray-500">Contact Email</span><div>{anyContact.organisationContactEmail}</div></div>}
+              {anyContact?.organisationContactPhone && <div><span className="text-gray-500">Contact Phone</span><div>{anyContact.organisationContactPhone}</div></div>}
+            </div>
+          </div>
+        )}
+
+        {/* Invoice recipients */}
+        {Array.isArray(contact?.invoiceRecipients) && contact!.invoiceRecipients!.length > 0 && (
+          <div>
+            <h4 className="font-semibold mb-3">Who will receive the invoices</h4>
+            <div className="space-y-2 text-sm">
+              {contact!.invoiceRecipients!.map((r, idx) => (
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div><span className="text-gray-500">Email</span><div>{r.email}</div></div>
+                  <div><span className="text-gray-500">Role</span><div>{r.role}</div></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Notes */}
         {contact?.notes && (
           <div>
             <h4 className="font-semibold mb-3">Notes</h4>
@@ -638,8 +697,8 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave }: Contact
           </div>
         )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
