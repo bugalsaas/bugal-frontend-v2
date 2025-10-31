@@ -104,23 +104,11 @@ export function useShiftActions() {
   const [isNotifying, setIsNotifying] = useState(false);
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
 
-  const { isDevelopmentMode } = useAuth();
 
   const createShift = async (shift: Omit<Shift, 'id' | 'createdAt' | 'updatedAt'>): Promise<Shift> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock creation
-        const newShift: Shift = {
-          ...shift,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        return newShift;
-      } else {
-        return await shiftsApi.create(shift);
-      }
+      return await shiftsApi.create(shift);
     } finally {
       setIsSaving(false);
     }
@@ -129,17 +117,7 @@ export function useShiftActions() {
   const updateShift = async (id: string, shift: Partial<Shift>): Promise<Shift> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock update
-        const updatedShift: Shift = {
-          ...shift as Shift,
-          id,
-          updatedAt: new Date().toISOString(),
-        };
-        return updatedShift;
-      } else {
-        return await shiftsApi.update(id, shift);
-      }
+      return await shiftsApi.update(id, shift);
     } finally {
       setIsSaving(false);
     }
@@ -148,13 +126,7 @@ export function useShiftActions() {
   const completeShift = async (id: string, data: { isGstFree: boolean }): Promise<Shift> => {
     setIsCompleting(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock completion
-        console.log('Mock complete shift:', id, data);
-        return mockShiftsResponse.data[0]; // Return first mock shift
-      } else {
-        return await shiftsApi.complete(id, data);
-      }
+      return await shiftsApi.complete(id, data);
     } finally {
       setIsCompleting(false);
     }
@@ -163,13 +135,7 @@ export function useShiftActions() {
   const cancelShift = async (id: string, data: { cancellationReason: string; cancellationAmountExclGst: number; isGstFree: boolean }): Promise<Shift> => {
     setIsCancelling(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock cancellation
-        console.log('Mock cancel shift:', id, data);
-        return mockShiftsResponse.data[0]; // Return first mock shift
-      } else {
-        return await shiftsApi.cancel(id, data);
-      }
+      return await shiftsApi.cancel(id, data);
     } finally {
       setIsCancelling(false);
     }
@@ -178,12 +144,7 @@ export function useShiftActions() {
   const deleteShift = async (id: string, type: 'single' | 'future' | 'all'): Promise<void> => {
     setIsDeleting(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock deletion
-        console.log('Mock delete shift:', id, type);
-      } else {
-        await shiftsApi.delete(id, type);
-      }
+      await shiftsApi.delete(id, type);
     } finally {
       setIsDeleting(false);
     }
@@ -192,13 +153,7 @@ export function useShiftActions() {
   const amendShift = async (id: string): Promise<Shift> => {
     setIsAmending(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock amendment
-        console.log('Mock amend shift:', id);
-        return mockShiftsResponse.data[0]; // Return first mock shift
-      } else {
-        return await shiftsApi.amend(id);
-      }
+      return await shiftsApi.amend(id);
     } finally {
       setIsAmending(false);
     }
@@ -207,12 +162,7 @@ export function useShiftActions() {
   const notifyShift = async (id: string, data: { message: string; recipients: string[] }): Promise<void> => {
     setIsNotifying(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock notification
-        console.log('Mock notify shift:', id, data);
-      } else {
-        await shiftsApi.notify(id, data);
-      }
+      await shiftsApi.notify(id, data);
     } finally {
       setIsNotifying(false);
     }

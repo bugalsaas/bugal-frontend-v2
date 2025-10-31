@@ -18,7 +18,7 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  const { login, error, clearError, isAuthenticated, enableDevelopmentMode } = useAuth();
+  const { login, error, clearError, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -65,10 +65,6 @@ export default function SignInPage() {
 
   const handleSignUp = () => {
     router.push('/sign-up');
-  };
-
-  const handleDevelopmentMode = () => {
-    enableDevelopmentMode();
   };
 
   return (
@@ -198,23 +194,6 @@ export default function SignInPage() {
             >
               Create an account
             </Button>
-          </div>
-        )}
-
-        {/* Development Mode Button */}
-        {(error && error.includes('backend server')) && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleDevelopmentMode}
-              className="w-full h-12 text-base font-medium text-yellow-700 border-yellow-300 hover:bg-yellow-50"
-            >
-              Continue in Development Mode
-            </Button>
-            <p className="mt-2 text-xs text-gray-500 text-center">
-              Use mock data when backend is unavailable
-            </p>
           </div>
         )}
 

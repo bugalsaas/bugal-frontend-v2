@@ -68,7 +68,7 @@ export function usePromo() {
 }
 
 export function useSubscriptionActions() {
-  const { isAuthenticated, isDevelopmentMode } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
 
   const checkout = async (planId: string, frequency: 'Monthly' | 'Yearly'): Promise<{ id: string }> => {

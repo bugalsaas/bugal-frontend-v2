@@ -24,8 +24,11 @@ import { DashboardSummary } from '@/components/pages/dashboard-summary';
 
 export function DashboardContent() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isOrganizationAdmin } = useAuth();
   const [period, setPeriod] = useState<DashboardPeriod | string>(DashboardPeriod.Current);
+  
+  // Show admin tiles if user is platform admin OR organization admin
+  const isAdmin = (user?.isAdmin || false) || isOrganizationAdmin;
   
   const { 
     todaysShifts, 
@@ -150,7 +153,7 @@ export function DashboardContent() {
         </div>
         <DashboardSummary 
           summary={summary} 
-          isAdmin={user?.isAdmin || false}
+          isAdmin={isAdmin}
           organizationType={user?.organization?.type}
           isLoading={isLoading}
         />

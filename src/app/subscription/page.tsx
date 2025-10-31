@@ -45,11 +45,6 @@ function PriceTag({ oldPrice, price, label }: { oldPrice: number; price: number;
   );
 }
 
-// Mock subscription status - replace with real data from auth context
-// Change to 'active' to see the manage subscription section
-const mockSubscriptionStatus = 'unsubscribed'; // 'active' | 'inactive' | 'past_due' | 'unsubscribed' | 'free' | 'trial'
-const mockCurrentPlan = null; // Plan ID if user has active subscription
-
 export default function SubscriptionPage() {
   const { data: plans, isLoading } = usePlans();
   const { checkout, openCustomerPortal, changePlan, isSaving } = useSubscriptionActions();
@@ -72,15 +67,7 @@ export default function SubscriptionPage() {
     try {
       const result = await checkout(planId, frequency);
       
-      // In development mode, show a mock message
-      if (!result.id || result.id === 'mock_session_id') {
-        // Redirect to success page for mock checkout
-        window.location.href = '/subscription/success';
-        return;
-      }
-      
-      // In production, this would use Stripe's checkout redirect
-      // For now, just show a success message and redirect
+      // Redirect to Stripe checkout or success page
       window.location.href = '/subscription/success';
     } catch (error) {
       console.error('Checkout failed:', error);
@@ -91,11 +78,6 @@ export default function SubscriptionPage() {
   const handleManageSubscription = async () => {
     try {
       const result = await openCustomerPortal();
-      // In development mode, show a mock message
-      if (!result.url || result.url === 'https://mock-portal-url.stripe.com') {
-        alert('Mock customer portal - In production, this would redirect to Stripe customer portal.');
-        return;
-      }
       window.open(result.url, '_self');
     } catch (error) {
       console.error('Failed to open customer portal:', error);
@@ -131,9 +113,10 @@ export default function SubscriptionPage() {
     );
   }
 
-  // Check subscription status - only show checkout if unsubscribed/free
-  const shouldShowCheckout = mockSubscriptionStatus === 'unsubscribed' || mockSubscriptionStatus === 'free';
-  const shouldShowManage = !shouldShowCheckout;
+  // Default to showing checkout - subscription status should come from API/user context when available
+  // TODO: Replace with actual subscription status from user context or API
+  const shouldShowCheckout = true; // Show checkout by default until subscription status is available
+  const shouldShowManage = false;
 
   return (
     <MainLayout activeNavItem="subscription" headerConfig={headerConfig}>
@@ -179,7 +162,8 @@ export default function SubscriptionPage() {
             const price = frequency === 'Monthly' ? plan.monthlyPrice : plan.yearlyPrice;
             const oldPrice = frequency === 'Monthly' ? plan.originalMonthlyPrice : plan.originalYearlyPrice;
             const label = frequency === 'Monthly' ? 'month' : 'year';
-            const isCurrentPlan = mockCurrentPlan === plan.id;
+            // TODO: Replace with actual current plan from subscription status
+            const isCurrentPlan = false;
 
             return (
               <div key={plan.id} className="relative">

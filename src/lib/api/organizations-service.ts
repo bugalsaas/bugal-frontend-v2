@@ -196,24 +196,15 @@ export const organizationsApi = {
   },
 
   create: async (data: OrganizationCreateDto): Promise<Organization> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      const newOrg: Organization = {
-        id: Date.now().toString(),
-        ...data,
-        country: mockCountries[0],
-        referralCode: `ORG${Date.now()}`,
-        subscriptionStatus: SubscriptionStatus.Trial,
-        createdAt: new Date().toISOString(),
-        trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        paymentTerms: 30,
-      };
-      mockOrganizations.push(newOrg);
-      return newOrg;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
     
-    const response = await fetch('/api/organizations', {
+    const response = await fetch(`${API_BASE_URL}/organizations`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(data),
     });
     
@@ -243,28 +234,30 @@ export const organizationsApi = {
   },
 
   delete: async (id: string): Promise<void> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      const orgIndex = mockOrganizations.findIndex(o => o.id === id);
-      if (orgIndex === -1) throw new Error('Organization not found');
-      mockOrganizations.splice(orgIndex, 1);
-      return;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
     
-    const response = await fetch(`/api/organizations/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/organizations/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
     
     if (!response.ok) throw new Error('Failed to delete organization');
   },
 
   export: async (): Promise<void> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      console.log('Exporting organizations...');
-      return;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
     
-    const response = await fetch('/api/organizations/export', {
+    const response = await fetch(`${API_BASE_URL}/organizations/export`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
     
     if (!response.ok) throw new Error('Failed to export organizations');
@@ -291,24 +284,15 @@ export const organizationsApi = {
   },
 
   inviteUser: async (idOrganization: string, data: OrganizationInviteDto): Promise<OrganizationUser> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      const newUser: OrganizationUser = {
-        id: Date.now().toString(),
-        idOrganization,
-        ...data,
-        fullName: `${data.firstName || ''} ${data.lastName || ''}`.trim(),
-        status: OrganizationUserStatus.Invited,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        role: mockRoles.find(r => r.id === data.idRole),
-      };
-      mockOrganizationUsers.push(newUser);
-      return newUser;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
     
-    const response = await fetch(`/api/organizations/${idOrganization}/invite`, {
+    const response = await fetch(`${API_BASE_URL}/organizations/${idOrganization}/invite`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(data),
     });
     
@@ -317,22 +301,15 @@ export const organizationsApi = {
   },
 
   updateUser: async (idOrganization: string, userId: string, data: StaffUpdateDto): Promise<OrganizationUser> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      const userIndex = mockOrganizationUsers.findIndex(u => u.id === userId);
-      if (userIndex === -1) throw new Error('User not found');
-      
-      mockOrganizationUsers[userIndex] = { 
-        ...mockOrganizationUsers[userIndex], 
-        ...data,
-        role: mockRoles.find(r => r.id === data.idRole),
-        updatedAt: new Date().toISOString(),
-      };
-      return mockOrganizationUsers[userIndex];
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
     
-    const response = await fetch(`/api/organizations/${idOrganization}/users/${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/organizations/${idOrganization}/users/${userId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(data),
     });
     
@@ -341,42 +318,30 @@ export const organizationsApi = {
   },
 
   disableUser: async (idOrganization: string, userId: string): Promise<void> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      const userIndex = mockOrganizationUsers.findIndex(u => u.id === userId);
-      if (userIndex === -1) throw new Error('User not found');
-      
-      mockOrganizationUsers[userIndex] = {
-        ...mockOrganizationUsers[userIndex],
-        status: OrganizationUserStatus.Disabled,
-        disabledAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      return;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
     
-    const response = await fetch(`/api/organizations/${idOrganization}/users/${userId}/disable`, {
+    const response = await fetch(`${API_BASE_URL}/organizations/${idOrganization}/users/${userId}/disable`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
     
     if (!response.ok) throw new Error('Failed to disable user');
   },
 
   enableUser: async (idOrganization: string, userId: string): Promise<void> => {
-    if (process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL) {
-      const userIndex = mockOrganizationUsers.findIndex(u => u.id === userId);
-      if (userIndex === -1) throw new Error('User not found');
-      
-      mockOrganizationUsers[userIndex] = {
-        ...mockOrganizationUsers[userIndex],
-        status: OrganizationUserStatus.Active,
-        disabledAt: undefined,
-        updatedAt: new Date().toISOString(),
-      };
-      return;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
     
-    const response = await fetch(`/api/organizations/${idOrganization}/users/${userId}/enable`, {
+    const response = await fetch(`${API_BASE_URL}/organizations/${idOrganization}/users/${userId}/enable`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
     
     if (!response.ok) throw new Error('Failed to enable user');

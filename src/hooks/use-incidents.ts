@@ -99,29 +99,11 @@ export function useIncidentActions() {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
 
-  const { isDevelopmentMode } = useAuth();
 
   const createIncident = async (incident: Omit<Incident, 'id' | 'createdAt' | 'updatedAt' | 'code' | 'reportedBy'>): Promise<Incident> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock creation
-        const newIncident: Incident = {
-          ...incident,
-          id: Date.now().toString(),
-          code: `INC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-          reportedBy: {
-            id: 'user1',
-            fullName: 'Current User',
-            email: 'user@example.com',
-          },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        return newIncident;
-      } else {
-        return await incidentsApi.create(incident);
-      }
+      return await incidentsApi.create(incident);
     } finally {
       setIsSaving(false);
     }
@@ -130,17 +112,7 @@ export function useIncidentActions() {
   const updateIncident = async (id: string, incident: Partial<Incident>): Promise<Incident> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock update
-        const updatedIncident: Incident = {
-          ...incident as Incident,
-          id,
-          updatedAt: new Date().toISOString(),
-        };
-        return updatedIncident;
-      } else {
-        return await incidentsApi.update(id, incident);
-      }
+      return await incidentsApi.update(id, incident);
     } finally {
       setIsSaving(false);
     }
@@ -149,12 +121,7 @@ export function useIncidentActions() {
   const deleteIncident = async (id: string): Promise<void> => {
     setIsDeleting(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock deletion
-        console.log('Mock delete incident:', id);
-      } else {
-        await incidentsApi.delete(id);
-      }
+      await incidentsApi.delete(id);
     } finally {
       setIsDeleting(false);
     }

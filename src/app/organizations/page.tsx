@@ -80,6 +80,17 @@ export default function OrganizationsPage() {
     setSelectedOrganization(undefined);
   };
 
+  // Auto-open create modal when ?new=1 present
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('new') === '1') {
+        setModalMode('new');
+        setIsModalOpen(true);
+      }
+    }
+  }, []);
+
   const headerConfig = {
     title: 'Organizations',
     subtitle: 'Manage your organizations and business settings',

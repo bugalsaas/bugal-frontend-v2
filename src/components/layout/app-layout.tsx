@@ -2,9 +2,8 @@
 
 import React, { useState } from 'react';
 import { Header, MobileHeader, DesktopHeader } from './header';
-import { ResponsiveNavigation, MobileBottomNav, DesktopSidebarNav, MobileDrawerNav } from './navigation';
+import { ResponsiveNavigation, MobileBottomNav, DesktopSidebarNav, MobileDrawerNav, NavigationItem } from './navigation';
 import { mobileSpacing } from '@/lib/mobile-utils';
-import { DevModeBanner } from '@/components/ui/dev-mode-banner';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -29,7 +28,7 @@ interface AppLayoutProps {
     badge?: string | number;
     isActive?: boolean;
   }>;
-  onNavigationClick?: (item: any) => void;
+  onNavigationClick?: (item: NavigationItem) => void;
   className?: string;
 }
 
@@ -49,7 +48,7 @@ export function AppLayout({
 }: AppLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleNavigationClick = (item: any) => {
+  const handleNavigationClick = (item: NavigationItem) => {
     onNavigationClick?.(item);
     setMobileMenuOpen(false);
   };
@@ -64,9 +63,6 @@ export function AppLayout({
 
   return (
     <div className={`min-h-screen bg-gray-50 ${className}`}>
-      {/* Development Mode Banner */}
-      <DevModeBanner />
-      
       {/* Desktop Layout */}
       <div className="hidden md:flex min-h-screen">
         {/* Desktop Sidebar */}

@@ -18,6 +18,7 @@ import {
   Send,
   User,
   AlertCircle,
+  CheckCircle,
 } from 'lucide-react';
 
 // Form validation schema

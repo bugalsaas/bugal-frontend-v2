@@ -447,7 +447,7 @@ export function IncidentModal({
                   
                   {watchedValues.hadOtherIndividualsInvolved && (
                     <div className="space-y-2">
-                      <Label htmlFor="otherIndividualsInvolved">Individuals' Details</Label>
+                      <Label htmlFor="otherIndividualsInvolved">Individuals&apos; Details</Label>
                       <Textarea
                         id="otherIndividualsInvolved"
                         {...form.register('otherIndividualsInvolved')}

@@ -43,7 +43,7 @@ export function MainLayout({
   isAdmin = false
 }: MainLayoutProps & { isAdmin?: boolean }) {
   const router = useRouter();
-  const { user: authUser, logout } = useAuth();
+  const { user: authUser, logout, organizations: authOrganizations, switchOrganization } = useAuth();
   const effectiveIsAdmin = isAdmin || (authUser?.isAdmin || false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -97,17 +97,16 @@ export function MainLayout({
     isActive: item.id === activeNavItem
   }));
 
-  // Mock organizations for organization switcher
-  const mockOrganizations = [
-    { id: '1', name: 'My Business', type: 'company' },
-    { id: '2', name: 'Client Business', type: 'sole_trader' },
-  ];
-  const mockCurrentOrg = mockOrganizations[0];
+  // Get organizations from auth context
+  const organizations = authOrganizations || [];
+  const currentOrg = authUser?.organization ? {
+    id: authUser.organization.id,
+    name: authUser.organization.name,
+    type: authUser.organization.type
+  } : null;
 
   const handleOrganizationSwitch = (org: any) => {
-    console.log('Switching to organization:', org);
-    // TODO: Implement actual organization switching
-    window.location.reload();
+    switchOrganization(org.id);
   };
 
   const handleCreateNewOrg = () => {
@@ -178,12 +177,14 @@ export function MainLayout({
 
           {/* Organization Switcher */}
           <div className={`border-t px-4 py-4 ${sidebarCollapsed ? 'opacity-0 overflow-hidden' : ''}`} style={{ borderColor: colors.sidebar.border }}>
-            <OrganizationSwitcher
-              organizations={mockOrganizations}
-              currentOrganization={mockCurrentOrg}
-              onOrganizationSwitch={handleOrganizationSwitch}
-              onCreateNew={handleCreateNewOrg}
-            />
+            {currentOrg && (
+              <OrganizationSwitcher
+                organizations={organizations}
+                currentOrganization={currentOrg}
+                onOrganizationSwitch={handleOrganizationSwitch}
+                onCreateNew={handleCreateNewOrg}
+              />
+            )}
           </div>
         </div>
         

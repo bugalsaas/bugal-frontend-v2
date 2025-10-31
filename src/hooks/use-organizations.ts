@@ -110,7 +110,6 @@ export function useCurrentOrganization() {
 }
 
 export function useOrganizationActions() {
-  const { isDevelopmentMode } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const createOrganization = useCallback(async (data: OrganizationCreateDto): Promise<Organization> => {
@@ -160,7 +159,7 @@ export function useOrganizationActions() {
 
 // Organization Users (Staff) hooks
 export function useOrganizationUsers(idOrganization: string) {
-  const { isAuthenticated, isDevelopmentMode } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [data, setData] = useState<OrganizationUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -169,7 +168,7 @@ export function useOrganizationUsers(idOrganization: string) {
   const [filterCounter, setFilterCounter] = useState(0);
 
   const loadUsers = useCallback(async () => {
-    if (!isAuthenticated && !isDevelopmentMode) {
+    if (!isAuthenticated) {
       setIsLoading(false);
       return;
     }
@@ -195,14 +194,11 @@ export function useOrganizationUsers(idOrganization: string) {
       setFilterCounter(activeFilters);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load users');
-      if (isDevelopmentMode) {
-        // Fallback to mock data
-        setData([]);
-      }
+      setData([]);
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, isDevelopmentMode, idOrganization, pagination.page, pagination.pageSize, filters]);
+  }, [isAuthenticated, idOrganization, pagination.page, pagination.pageSize, filters]);
 
   useEffect(() => {
     loadUsers();
@@ -234,7 +230,6 @@ export function useOrganizationUsers(idOrganization: string) {
 }
 
 export function useOrganizationUserActions() {
-  const { isDevelopmentMode } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const inviteUser = useCallback(async (idOrganization: string, data: OrganizationInviteDto): Promise<OrganizationUser> => {
@@ -284,7 +279,6 @@ export function useOrganizationUserActions() {
 
 // Reference data hooks
 export function useRoles(idOrganization: string) {
-  const { isDevelopmentMode } = useAuth();
   const [data, setData] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -298,14 +292,11 @@ export function useRoles(idOrganization: string) {
       setData(roles);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load roles');
-      if (isDevelopmentMode) {
-        // Fallback to mock data
-        setData([]);
-      }
+      setData([]);
     } finally {
       setIsLoading(false);
     }
-  }, [idOrganization, isDevelopmentMode]);
+  }, [idOrganization]);
 
   useEffect(() => {
     loadRoles();
@@ -320,9 +311,8 @@ export function useRoles(idOrganization: string) {
 }
 
 export function useCountries() {
-  const { isDevelopmentMode } = useAuth();
   const [data, setData] = useState<Country[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  Associated [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadCountries = useCallback(async () => {
@@ -334,14 +324,11 @@ export function useCountries() {
       setData(countries);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load countries');
-      if (isDevelopmentMode) {
-        // Fallback to mock data
-        setData([]);
-      }
+      setData([]);
     } finally {
       setIsLoading(false);
     }
-  }, [isDevelopmentMode]);
+  }, []);
 
   useEffect(() => {
     loadCountries();
@@ -356,7 +343,6 @@ export function useCountries() {
 }
 
 export function useStates(idCountry: string) {
-  const { isDevelopmentMode } = useAuth();
   const [data, setData] = useState<State[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -376,14 +362,11 @@ export function useStates(idCountry: string) {
       setData(states);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load states');
-      if (isDevelopmentMode) {
-        // Fallback to mock data
-        setData([]);
-      }
+      setData([]);
     } finally {
       setIsLoading(false);
     }
-  }, [idCountry, isDevelopmentMode]);
+  }, [idCountry]);
 
   useEffect(() => {
     loadStates();
@@ -398,7 +381,6 @@ export function useStates(idCountry: string) {
 }
 
 export function useBanks() {
-  const { isDevelopmentMode } = useAuth();
   const [data, setData] = useState<Bank[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -412,14 +394,11 @@ export function useBanks() {
       setData(banks);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load banks');
-      if (isDevelopmentMode) {
-        // Fallback to mock data
-        setData([]);
-      }
+      setData([]);
     } finally {
       setIsLoading(false);
     }
-  }, [isDevelopmentMode]);
+  }, []);
 
   useEffect(() => {
     loadBanks();

@@ -83,24 +83,13 @@ export const ratesApi = {
   },
 
   async create(rate: Omit<Rate, 'id' | 'createdAt' | 'updatedAt' | 'amountGst' | 'amountInclGst'>): Promise<Rate> {
-    const isDevelopmentMode = process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (isDevelopmentMode) {
-      const newRate: Rate = {
-        ...rate,
-        id: Date.now().toString(),
-        amountGst: rate.amountExclGst * 0.1, // 10% GST
-        amountInclGst: rate.amountExclGst * 1.1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      mockRatesData.push(newRate);
-      return newRate;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rates`, {
+    const response = await fetch(`${API_BASE_URL}/rates`, {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(rate),
@@ -112,34 +101,13 @@ export const ratesApi = {
   },
 
   async update(id: string, rate: Partial<Rate>): Promise<Rate> {
-    const isDevelopmentMode = process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (isDevelopmentMode) {
-      const index = mockRatesData.findIndex(r => r.id === id);
-      if (index === -1) {
-        throw new Error('Rate not found');
-      }
-      
-      const updatedRate: Rate = {
-        ...mockRatesData[index],
-        ...rate,
-        id,
-        updatedAt: new Date().toISOString(),
-      };
-      
-      // Recalculate GST if amountExclGst changed
-      if (rate.amountExclGst !== undefined) {
-        updatedRate.amountGst = rate.amountExclGst * 0.1;
-        updatedRate.amountInclGst = rate.amountExclGst * 1.1;
-      }
-      
-      mockRatesData[index] = updatedRate;
-      return updatedRate;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rates/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/rates/${id}`, {
       method: 'PUT',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(rate),
@@ -151,19 +119,15 @@ export const ratesApi = {
   },
 
   async delete(id: string): Promise<void> {
-    const isDevelopmentMode = process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (isDevelopmentMode) {
-      const index = mockRatesData.findIndex(r => r.id === id);
-      if (index === -1) {
-        throw new Error('Rate not found');
-      }
-      mockRatesData.splice(index, 1);
-      return;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rates/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/rates/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
     if (!response.ok) {
       throw new Error('Failed to delete rate');
@@ -171,27 +135,13 @@ export const ratesApi = {
   },
 
   async archive(id: string): Promise<Rate> {
-    const isDevelopmentMode = process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (isDevelopmentMode) {
-      const index = mockRatesData.findIndex(r => r.id === id);
-      if (index === -1) {
-        throw new Error('Rate not found');
-      }
-      
-      const archivedRate: Rate = {
-        ...mockRatesData[index],
-        isArchived: true,
-        updatedAt: new Date().toISOString(),
-      };
-      
-      mockRatesData[index] = archivedRate;
-      return archivedRate;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rates/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/rates/${id}`, {
       method: 'PUT',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ isArchived: true }),

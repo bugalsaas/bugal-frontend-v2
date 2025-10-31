@@ -66,7 +66,7 @@ export function useUsers() {
 }
 
 export function useUserActions() {
-  const { isAuthenticated, isDevelopmentMode } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
 
   const impersonateUser = async (userId: string) => {

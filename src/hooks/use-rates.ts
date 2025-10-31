@@ -26,7 +26,7 @@ export function useRates(options: UseRatesOptions = {}) {
     isArchived: options.defaultFilters?.isArchived || false,
   });
 
-  const { isDevelopmentMode, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const loadRates = useCallback(async () => {
     setLoading(true);
@@ -70,7 +70,7 @@ export function useRates(options: UseRatesOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, isDevelopmentMode, filters, pagination]);
+  }, [isAuthenticated, filters, pagination]);
 
   useEffect(() => {
     loadRates();
@@ -108,25 +108,11 @@ export function useRateActions() {
   const [isArchiving, setIsArchiving] = useState(false);
   const [selectedRate, setSelectedRate] = useState<Rate | null>(null);
 
-  const { isDevelopmentMode } = useAuth();
 
   const createRate = async (rate: Omit<Rate, 'id' | 'createdAt' | 'updatedAt' | 'amountGst' | 'amountInclGst'>): Promise<Rate> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock creation
-        const newRate: Rate = {
-          ...rate,
-          id: Date.now().toString(),
-          amountGst: rate.amountExclGst * 0.1, // 10% GST
-          amountInclGst: rate.amountExclGst * 1.1,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        return newRate;
-      } else {
-        return await ratesApi.create(rate);
-      }
+      return await ratesApi.create(rate);
     } finally {
       setIsSaving(false);
     }
@@ -135,24 +121,7 @@ export function useRateActions() {
   const updateRate = async (id: string, rate: Partial<Rate>): Promise<Rate> => {
     setIsSaving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock update
-        const updatedRate: Rate = {
-          ...rate as Rate,
-          id,
-          updatedAt: new Date().toISOString(),
-        };
-        
-        // Recalculate GST if amountExclGst changed
-        if (rate.amountExclGst !== undefined) {
-          updatedRate.amountGst = rate.amountExclGst * 0.1;
-          updatedRate.amountInclGst = rate.amountExclGst * 1.1;
-        }
-        
-        return updatedRate;
-      } else {
-        return await ratesApi.update(id, rate);
-      }
+      return await ratesApi.update(id, rate);
     } finally {
       setIsSaving(false);
     }
@@ -161,12 +130,7 @@ export function useRateActions() {
   const deleteRate = async (id: string): Promise<void> => {
     setIsDeleting(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock deletion
-        console.log('Mock delete rate:', id);
-      } else {
-        await ratesApi.delete(id);
-      }
+      await ratesApi.delete(id);
     } finally {
       setIsDeleting(false);
     }
@@ -175,25 +139,7 @@ export function useRateActions() {
   const archiveRate = async (id: string): Promise<Rate> => {
     setIsArchiving(true);
     try {
-      if (isDevelopmentMode) {
-        // Mock archiving
-        const archivedRate: Rate = {
-          id,
-          idUser: 'user1',
-          name: 'Archived Rate',
-          description: 'Archived rate',
-          amountExclGst: 0,
-          amountGst: 0,
-          amountInclGst: 0,
-          rateType: RateType.Hourly,
-          isArchived: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        return archivedRate;
-      } else {
-        return await ratesApi.archive(id);
-      }
+      return await ratesApi.archive(id);
     } finally {
       setIsArchiving(false);
     }

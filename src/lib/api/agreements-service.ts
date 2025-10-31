@@ -138,28 +138,13 @@ export const agreementsApi = {
   },
 
   async create(agreement: Omit<Agreement, 'id' | 'createdAt' | 'updatedAt' | 'code' | 'user'>): Promise<Agreement> {
-    const isDevelopmentMode = process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (isDevelopmentMode) {
-      const newAgreement: Agreement = {
-        ...agreement,
-        id: Date.now().toString(),
-        code: `AGR-${new Date().getFullYear()}-${String(mockAgreementsData.length + 1).padStart(3, '0')}`,
-        user: {
-          id: 'user1',
-          fullName: 'Current User',
-          email: 'user@example.com',
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      mockAgreementsData.push(newAgreement);
-      return newAgreement;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/agreements`, {
+    const response = await fetch(`${API_BASE_URL}/agreements`, {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(agreement),
@@ -171,28 +156,13 @@ export const agreementsApi = {
   },
 
   async update(id: string, agreement: Partial<Agreement>): Promise<Agreement> {
-    const isDevelopmentMode = process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (isDevelopmentMode) {
-      const index = mockAgreementsData.findIndex(a => a.id === id);
-      if (index === -1) {
-        throw new Error('Agreement not found');
-      }
-      
-      const updatedAgreement: Agreement = {
-        ...mockAgreementsData[index],
-        ...agreement,
-        id,
-        updatedAt: new Date().toISOString(),
-      };
-      
-      mockAgreementsData[index] = updatedAgreement;
-      return updatedAgreement;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/agreements/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/agreements/${id}`, {
       method: 'PUT',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(agreement),
@@ -204,19 +174,15 @@ export const agreementsApi = {
   },
 
   async delete(id: string): Promise<void> {
-    const isDevelopmentMode = process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (isDevelopmentMode) {
-      const index = mockAgreementsData.findIndex(a => a.id === id);
-      if (index === -1) {
-        throw new Error('Agreement not found');
-      }
-      mockAgreementsData.splice(index, 1);
-      return;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/agreements/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/agreements/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
     if (!response.ok) {
       throw new Error('Failed to delete agreement');
@@ -224,27 +190,15 @@ export const agreementsApi = {
   },
 
   async complete(id: string): Promise<Agreement> {
-    const isDevelopmentMode = process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (isDevelopmentMode) {
-      const index = mockAgreementsData.findIndex(a => a.id === id);
-      if (index === -1) {
-        throw new Error('Agreement not found');
-      }
-      
-      const completedAgreement: Agreement = {
-        ...mockAgreementsData[index],
-        agreementStatus: AgreementStatus.Completed,
-        completedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      mockAgreementsData[index] = completedAgreement;
-      return completedAgreement;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/agreements/${id}/complete`, {
+    const response = await fetch(`${API_BASE_URL}/agreements/${id}/complete`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
     if (!response.ok) {
       throw new Error('Failed to complete agreement');
@@ -253,27 +207,15 @@ export const agreementsApi = {
   },
 
   async draft(id: string): Promise<Agreement> {
-    const isDevelopmentMode = process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (isDevelopmentMode) {
-      const index = mockAgreementsData.findIndex(a => a.id === id);
-      if (index === -1) {
-        throw new Error('Agreement not found');
-      }
-      
-      const draftAgreement: Agreement = {
-        ...mockAgreementsData[index],
-        agreementStatus: AgreementStatus.Draft,
-        completedAt: undefined,
-        updatedAt: new Date().toISOString(),
-      };
-      
-      mockAgreementsData[index] = draftAgreement;
-      return draftAgreement;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/agreements/${id}/draft`, {
+    const response = await fetch(`${API_BASE_URL}/agreements/${id}/draft`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
     if (!response.ok) {
       throw new Error('Failed to revert agreement to draft');
@@ -282,16 +224,13 @@ export const agreementsApi = {
   },
 
   async notify(id: string, recipients: string[]): Promise<void> {
-    const isDevelopmentMode = process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (isDevelopmentMode) {
-      console.log('Mock notify agreement:', id, 'to recipients:', recipients);
-      return;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/agreements/${id}/notify`, {
+    const response = await fetch(`${API_BASE_URL}/agreements/${id}/notify`, {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ recipients }),

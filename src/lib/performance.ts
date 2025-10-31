@@ -40,7 +40,7 @@ export function measureComponentRender(componentName: string) {
 }
 
 // Debounce function for performance optimization
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -60,7 +60,7 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 // Throttle function for performance optimization
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
@@ -81,13 +81,13 @@ export function isLowEndDevice(): boolean {
   
   // Check for low memory devices
   if ('deviceMemory' in navigator) {
-    const memory = (navigator as any).deviceMemory;
-    return memory < 4; // Less than 4GB RAM
+    const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+    return memory !== undefined && memory < 4; // Less than 4GB RAM
   }
   
   // Check for slow connection
   if ('connection' in navigator) {
-    const connection = (navigator as any).connection;
+    const connection = (navigator as Navigator & { connection?: { effectiveType?: string } }).connection;
     return connection?.effectiveType === 'slow-2g' || connection?.effectiveType === '2g';
   }
   

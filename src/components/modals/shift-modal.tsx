@@ -611,7 +611,7 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
     // Convert empty string to 'none' for display, and 'none' back to empty string for form
     const displayValue = currentValue === '' ? 'none' : currentValue;
     // Only disabled if the shift already has an ID (existing shift) - not on new or duplicate
-    const isExistingShift = shift?.id && mode === 'edit';
+    const isExistingShift = !!(shift?.id && mode === 'edit');
 
     return (
       <Select

@@ -112,28 +112,13 @@ export const incidentsApi = {
   },
 
   async create(incident: Omit<Incident, 'id' | 'createdAt' | 'updatedAt' | 'code' | 'reportedBy'>): Promise<Incident> {
-    const isDevelopmentMode = process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (isDevelopmentMode) {
-      const newIncident: Incident = {
-        ...incident,
-        id: Date.now().toString(),
-        code: `INC-${new Date().getFullYear()}-${String(mockIncidentsData.length + 1).padStart(3, '0')}`,
-        reportedBy: {
-          id: 'user1',
-          fullName: 'Current User',
-          email: 'user@example.com',
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      mockIncidentsData.push(newIncident);
-      return newIncident;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/incidents`, {
+    const response = await fetch(`${API_BASE_URL}/incidents`, {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(incident),
@@ -145,28 +130,13 @@ export const incidentsApi = {
   },
 
   async update(id: string, incident: Partial<Incident>): Promise<Incident> {
-    const isDevelopmentMode = process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (isDevelopmentMode) {
-      const index = mockIncidentsData.findIndex(i => i.id === id);
-      if (index === -1) {
-        throw new Error('Incident not found');
-      }
-      
-      const updatedIncident: Incident = {
-        ...mockIncidentsData[index],
-        ...incident,
-        id,
-        updatedAt: new Date().toISOString(),
-      };
-      
-      mockIncidentsData[index] = updatedIncident;
-      return updatedIncident;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/incidents/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/incidents/${id}`, {
       method: 'PUT',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(incident),
@@ -178,19 +148,15 @@ export const incidentsApi = {
   },
 
   async delete(id: string): Promise<void> {
-    const isDevelopmentMode = process.env.NODE_ENV === 'development' || !process.env.NEXT_PUBLIC_API_BASE_URL;
-    
-    if (isDevelopmentMode) {
-      const index = mockIncidentsData.findIndex(i => i.id === id);
-      if (index === -1) {
-        throw new Error('Incident not found');
-      }
-      mockIncidentsData.splice(index, 1);
-      return;
-    }
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/incidents/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/incidents/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
     if (!response.ok) {
       throw new Error('Failed to delete incident');

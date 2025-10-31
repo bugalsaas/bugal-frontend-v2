@@ -16,6 +16,7 @@ export interface User {
     name: string;
     type: string;
   };
+  scopes?: string[]; // Organization permissions/scopes
 }
 
 export interface AuthState {
@@ -24,7 +25,7 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  isDevelopmentMode: boolean;
+  organizations: Array<{ id: string; name: string }>; // All orgs for current user
 }
 
 export interface AuthContextType extends AuthState {
@@ -35,8 +36,8 @@ export interface AuthContextType extends AuthState {
   resetPassword: (token: string, password: string) => Promise<void>;
   clearError: () => void;
   refreshUser: () => Promise<void>;
-  enableDevelopmentMode: () => void;
-  disableDevelopmentMode: () => void;
+  isOrganizationAdmin: boolean; // Whether user is admin within their organization
+  switchOrganization: (idOrganization: string) => Promise<void>;
 }
 
 // Token management
@@ -222,6 +223,27 @@ const authApi = {
       throw error;
     }
   },
+
+  async switchOrganization(idOrganization: string) {
+    const token = getToken();
+    if (!token) throw new Error('No token found');
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/switch`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ idOrganization }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Failed to switch organization' }));
+      throw new Error(error.message || 'Failed to switch organization');
+    }
+
+    return response.json(); // { token }
+  },
 };
 
 // Auth Context
@@ -234,7 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: false,
     isLoading: true,
     error: null,
-    isDevelopmentMode: false,
+    organizations: [],
   });
 
   const router = useRouter();
@@ -250,14 +272,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Verify token is still valid
           try {
             console.log('Verifying existing token...');
-            const freshUser = await authApi.getMe();
-            console.log('Token valid, user:', freshUser);
+            const meResponse = await authApi.getMe();
+            console.log('Token valid, user:', meResponse);
+            // Extract user data and scopes from /me response
+            const freshUser: User = {
+              ...(meResponse.user || meResponse),
+              scopes: meResponse.scopes || [],
+              organization: meResponse.organization
+                ? {
+                    id: meResponse.organization.id,
+                    name: meResponse.organization.name,
+                    type: (meResponse.organization as any).organizationType || (meResponse.organization as any).type || '',
+                  }
+                : undefined,
+            };
             setState({
               user: freshUser,
               token,
               isAuthenticated: true,
               isLoading: false,
               error: null,
+              organizations: (meResponse.organizations || []).map((o: any) => ({ id: o.id, name: o.name })),
             });
             
             // Redirect to dashboard if we're on sign-in page
@@ -319,7 +354,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(token);
       
       // Fetch user data after successful login
-      const user = await authApi.getMe();
+      const meResponse = await authApi.getMe();
+      // Extract user data and scopes from /me response
+      const user: User = {
+        ...(meResponse.user || meResponse),
+        scopes: meResponse.scopes || [],
+        organization: meResponse.organization
+          ? {
+              id: meResponse.organization.id,
+              name: meResponse.organization.name,
+              type: (meResponse.organization as any).organizationType || (meResponse.organization as any).type || '',
+            }
+          : undefined,
+      };
       setUser(user);
       
       setState({
@@ -328,7 +375,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        isDevelopmentMode: false,
+        organizations: (meResponse.organizations || []).map((o: any) => ({ id: o.id, name: o.name })),
       });
 
       router.push('/');
@@ -361,7 +408,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: false,
       isLoading: false,
       error: null,
-      isDevelopmentMode: false,
     });
     router.push('/sign-in');
   };
@@ -450,12 +496,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = async () => {
     try {
-      const user = await authApi.getMe();
+      const meResponse = await authApi.getMe();
+      // Extract user data and scopes from /me response
+      const user: User = {
+        ...(meResponse.user || meResponse),
+        scopes: meResponse.scopes || [],
+        organization: meResponse.organization
+          ? {
+              id: meResponse.organization.id,
+              name: meResponse.organization.name,
+              type: (meResponse.organization as any).organizationType || (meResponse.organization as any).type || '',
+            }
+          : undefined,
+      };
       setUser(user);
       setState(prev => ({
         ...prev,
         user,
         error: null,
+        organizations: (meResponse.organizations || []).map((o: any) => ({ id: o.id, name: o.name })),
       }));
     } catch (error) {
       setState(prev => ({
@@ -465,44 +524,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const enableDevelopmentMode = () => {
-    const mockUser: User = {
-      id: 'dev-user-1',
-      email: 'developer@bugal.com.au',
-      name: 'Development User',
-      initials: 'DU',
-      organization: {
-        id: 'dev-org-1',
-        name: 'Bugal Development',
-        type: 'business',
-      },
-    };
-    
-    setUser(mockUser);
-    setState({
-      user: mockUser,
-      token: 'dev-token',
-      isAuthenticated: true,
-      isLoading: false,
-      error: null,
-      isDevelopmentMode: true,
-    });
-    
-    router.push('/');
+  const switchOrganization = async (idOrganization: string) => {
+    setState(prev => ({ ...prev, isLoading: true }));
+    try {
+      const { token } = await authApi.switchOrganization(idOrganization);
+      if (!token) throw new Error('Failed to receive token while switching organization');
+      setToken(token);
+      await refreshUser();
+    } catch (error) {
+      setState(prev => ({ ...prev, isLoading: false, error: error instanceof Error ? error.message : 'Failed to switch organization' }));
+      throw error;
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
   };
 
-  const disableDevelopmentMode = () => {
-    removeToken();
-    setState({
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      isLoading: false,
-      error: null,
-      isDevelopmentMode: false,
-    });
-    router.push('/sign-in');
-  };
+  // Helper function to determine if user is organization admin
+  // Organization admins have the 'organization:manage:settings' scope
+  const isOrganizationAdmin = useMemo(() => {
+    if (!state.user || !state.user.scopes || state.user.scopes.length === 0) {
+      return false;
+    }
+    // Check for organization:manage:settings scope which indicates admin role
+    return state.user.scopes.includes('organization:manage:settings');
+  }, [state.user]);
 
   const value: AuthContextType = useMemo(() => ({
     ...state,
@@ -513,15 +558,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword,
     clearError,
     refreshUser,
-    enableDevelopmentMode,
-    disableDevelopmentMode,
+    isOrganizationAdmin,
+    switchOrganization,
   }), [
     state.user,
     state.token,
     state.isAuthenticated,
     state.isLoading,
     state.error,
-    state.isDevelopmentMode,
     login,
     logout,
     signup,
@@ -529,8 +573,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword,
     clearError,
     refreshUser,
-    enableDevelopmentMode,
-    disableDevelopmentMode,
+    isOrganizationAdmin,
+    switchOrganization,
   ]);
 
   return (

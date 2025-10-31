@@ -6,7 +6,7 @@ import { InvoicesList } from '@/components/pages/invoices-list';
 import { InvoiceModal } from '@/components/modals/invoice-modal';
 import { PaymentModal } from '@/components/modals/payment-modal';
 import { NotifyModal } from '@/components/modals/notify-modal';
-import { Invoice } from '@/lib/api/invoices-service';
+import { Invoice, InvoicePayment } from '@/lib/api/invoices-service';
 
 export default function InvoicesPage() {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
@@ -56,12 +56,12 @@ export default function InvoicesPage() {
     // The InvoicesList component will refresh automatically via the hook
   };
 
-  const handleSavePayment = (payment: any) => {
+  const handleSavePayment = (payment: InvoicePayment) => {
     console.log('Payment saved:', payment);
     // The InvoicesList component will refresh automatically via the hook
   };
 
-  const handleNotifyInvoice = (recipients: any[]) => {
+  const handleNotifyInvoice = (recipients: Array<{ email: string; role: string }>) => {
     console.log('Invoice notified to:', recipients);
     // The InvoicesList component will refresh automatically via the hook
   };
