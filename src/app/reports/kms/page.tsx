@@ -63,7 +63,7 @@ export default function KmsReportPage() {
 
   const headerConfig = {
     title: 'Kilometres Report',
-    subtitle: 'Generate detailed reports for kilometre expenses',
+    subtitle: 'KMS Report overview',
     icon: FileText,
     showAddButton: false,
   };

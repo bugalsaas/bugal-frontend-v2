@@ -106,7 +106,7 @@ export default function RatesPage() {
 
   const headerConfig = {
     title: 'Rates',
-    subtitle: 'Manage your hourly and fixed rates',
+    subtitle: 'Rates overview',
     icon: DollarSign,
     showAddButton: true,
     onAddClick: handleAddRate,

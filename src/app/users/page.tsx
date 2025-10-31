@@ -202,7 +202,7 @@ export default function UsersPage() {
 
   const headerConfig = {
     title: 'Users',
-    subtitle: 'Manage all platform users (Admin only)',
+    subtitle: 'Users overview',
     icon: Team,
     showAddButton: false,
     showSearch: true,

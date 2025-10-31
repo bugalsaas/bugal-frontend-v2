@@ -36,7 +36,7 @@ export default function ContactsPage() {
 
   const headerConfig = {
     title: "Contacts",
-    subtitle: "Manage your contacts and client information",
+    subtitle: "Contacts overview",
     showSearch: true,
     showFilters: true,
     showAddButton: true,

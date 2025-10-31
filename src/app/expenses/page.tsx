@@ -42,7 +42,7 @@ export default function ExpensesPage() {
 
   const headerConfig = {
     title: 'Expenses',
-    subtitle: 'Manage your business expenses and receipts',
+    subtitle: 'Expenses overview',
     icon: Receipt,
     showAddButton: true,
     onAddClick: handleAddExpense,

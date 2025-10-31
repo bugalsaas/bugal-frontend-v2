@@ -93,7 +93,7 @@ export default function OrganizationsPage() {
 
   const headerConfig = {
     title: 'Organizations',
-    subtitle: 'Manage your organizations and business settings',
+    subtitle: 'Organizations overview',
     icon: Building2,
     showAddButton: true,
     addButtonText: 'Add Organization',

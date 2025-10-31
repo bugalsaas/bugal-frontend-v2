@@ -86,7 +86,7 @@ export default function SubscriptionPage() {
 
   const headerConfig = {
     title: 'Subscription',
-    subtitle: 'Choose a plan that works for you',
+    subtitle: 'Subscription overview',
     showAddButton: false,
   };
 

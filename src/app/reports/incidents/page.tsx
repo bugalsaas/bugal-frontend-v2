@@ -62,7 +62,7 @@ export default function IncidentsReportPage() {
 
   const headerConfig = {
     title: 'Incident Report',
-    subtitle: 'Generate detailed reports for incidents',
+    subtitle: 'Incident Report overview',
     icon: FileText,
     showAddButton: false,
   };

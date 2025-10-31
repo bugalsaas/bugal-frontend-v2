@@ -155,7 +155,7 @@ export default function OrganizationSettingsPage() {
 
   const headerConfig = {
     title: 'Organization Settings',
-    subtitle: 'Manage your organization details and preferences',
+    subtitle: 'Organization Settings overview',
     icon: Settings,
     showAddButton: false,
   };

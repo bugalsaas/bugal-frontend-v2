@@ -77,7 +77,7 @@ export default function InvoicesReportPage() {
 
   const headerConfig = {
     title: 'Invoice Report',
-    subtitle: 'Generate detailed reports for invoices by status',
+    subtitle: 'Invoices Report overview',
     icon: FileText,
     showAddButton: false,
   };

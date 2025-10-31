@@ -145,7 +145,7 @@ export default function ProfilePage() {
 
   const headerConfig = {
     title: 'Profile',
-    subtitle: 'Manage your personal information and preferences',
+    subtitle: 'Profile overview',
     showAddButton: false,
   };
 

@@ -539,7 +539,7 @@ export default function StaffPage() {
 
   const headerConfig = {
     title: 'Staff Management',
-    subtitle: 'Manage your team members and their roles',
+    subtitle: 'Staff Management overview',
     icon: Users,
     showAddButton: true,
     addButtonText: 'Invite Staff',

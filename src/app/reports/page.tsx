@@ -16,7 +16,7 @@ import {
 export default function ReportsPage() {
   const headerConfig = {
     title: 'Reports',
-    subtitle: 'Generate detailed reports for your business data',
+    subtitle: 'Reports overview',
     icon: TrendingUp,
     showAddButton: false,
   };

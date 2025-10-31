@@ -16,7 +16,7 @@ export default function SubscriptionSuccessPage() {
 
   const headerConfig = {
     title: 'Subscription',
-    subtitle: 'Success',
+    subtitle: 'Subscription overview',
     showAddButton: false,
   };
 

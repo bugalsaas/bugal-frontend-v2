@@ -66,7 +66,7 @@ export default function TaxReportPage() {
 
   const headerConfig = {
     title: 'Tax Report',
-    subtitle: 'Generate detailed tax reports for receipts and expenses',
+    subtitle: 'Tax Report overview',
     icon: FileText,
     showAddButton: false,
   };

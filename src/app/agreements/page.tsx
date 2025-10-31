@@ -156,7 +156,7 @@ export default function AgreementsPage() {
 
   const headerConfig = {
     title: 'Agreements',
-    subtitle: 'Manage service agreements and contracts',
+    subtitle: 'Agreements overview',
     icon: FileText,
     showAddButton: true,
     onAddClick: handleAddAgreement,

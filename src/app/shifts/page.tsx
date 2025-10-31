@@ -48,7 +48,7 @@ export default function ShiftsPage() {
 
   const headerConfig = {
     title: "Shifts",
-    subtitle: "Manage your shifts and work schedules",
+    subtitle: "Shifts overview",
     showSearch: true,
     showFilters: true,
     showAddButton: true,

@@ -72,7 +72,7 @@ export default function InvoicesPage() {
 
   const headerConfig = {
     title: "Invoices",
-    subtitle: "Manage your invoices and billing",
+    subtitle: "Invoices overview",
     showSearch: true,
     showFilters: true,
     showAddButton: true,

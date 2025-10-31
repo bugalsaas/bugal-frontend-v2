@@ -84,7 +84,7 @@ export default function ShiftsReportPage() {
 
   const headerConfig = {
     title: 'Shift Report',
-    subtitle: 'Generate detailed reports for shifts and expenses',
+    subtitle: 'Shifts Report overview',
     icon: FileText,
     showAddButton: false,
   };
