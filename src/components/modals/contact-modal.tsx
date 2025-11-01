@@ -175,7 +175,7 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
   };
 
   const addInvoiceRecipient = () => {
-    setInvoiceRecipients([...invoiceRecipients, { email: '', role: 'Primary' }]);
+    setInvoiceRecipients([...invoiceRecipients, { email: '', role: 'Accounts Department' }]);
   };
 
   const removeInvoiceRecipient = (index: number) => {
@@ -550,9 +550,12 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Primary">Primary</SelectItem>
-                          <SelectItem value="Secondary">Secondary</SelectItem>
-                          <SelectItem value="Billing">Billing</SelectItem>
+                          <SelectItem value="Accounts Department">Accounts Department</SelectItem>
+                          <SelectItem value="Support Coordinator">Support Coordinator</SelectItem>
+                          <SelectItem value="NDIS Contact">NDIS Contact</SelectItem>
+                          <SelectItem value="Other Guardian">Other Guardian</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                          <SelectItem value="Plan Manager">Plan Manager</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
