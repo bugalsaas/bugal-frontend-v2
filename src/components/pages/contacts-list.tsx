@@ -13,10 +13,8 @@ import {
   Phone,
   Mail,
   MapPin,
-  Calendar,
   Building,
   User,
-  Eye,
   Edit,
   Trash2,
 } from 'lucide-react';
@@ -84,6 +82,28 @@ export function ContactsList({ onAddContact, onEditContact, onViewContact }: Con
     }
   };
 
+  // Helper function to format address with proper state handling
+  const formatAddress = (contact: Contact) => {
+    if (!contact.addressLine1) return null;
+    
+    const parts = [contact.addressLine1];
+    if (contact.addressLine2) parts.push(contact.addressLine2);
+    
+    // Handle state - can be string or object with name property
+    let stateName = '';
+    if (contact.state) {
+      if (typeof contact.state === 'object' && contact.state !== null) {
+        stateName = (contact.state as { name?: string }).name || '';
+      } else {
+        stateName = String(contact.state);
+      }
+    }
+    if (stateName) parts.push(stateName);
+    if (contact.postcode) parts.push(contact.postcode);
+    
+    return parts.join(', ');
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -120,89 +140,77 @@ export function ContactsList({ onAddContact, onEditContact, onViewContact }: Con
 
       {/* Contacts List */}
       <div className="space-y-3">
-        {contacts?.map((contact) => (
-          <Card key={contact.id} className="p-4 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center gap-2">
-                    {getContactTypeIcon(contact.contactType)}
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {contact.fullName}
-                    </h3>
+        {contacts?.map((contact) => {
+          const formattedAddress = formatAddress(contact);
+          return (
+            <Card 
+              key={contact.id} 
+              className="p-4 hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => handleViewContact(contact)}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      {getContactTypeIcon(contact.contactType)}
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {contact.fullName}
+                      </h3>
+                    </div>
+                    <Badge variant={getStatusBadgeVariant(contact.status)}>
+                      {contact.status}
+                    </Badge>
                   </div>
-                  <Badge variant={getStatusBadgeVariant(contact.status)}>
-                    {contact.status}
-                  </Badge>
-                  <Badge variant="outline">
-                    {contact.contactType}
-                  </Badge>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                    {contact.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-gray-500" />
+                        <span>{contact.email}</span>
+                      </div>
+                    )}
+                    {contact.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-gray-500" />
+                        <span>{contact.phone}</span>
+                      </div>
+                    )}
+                    {formattedAddress && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-gray-500" />
+                        <span>{formattedAddress}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {contact.notes && (
+                    <div className="mt-3 text-sm text-gray-600">
+                      <p className="italic">"{contact.notes}"</p>
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                  {contact.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-gray-500" />
-                      <span>{contact.email}</span>
-                    </div>
-                  )}
-                  {contact.phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-500" />
-                      <span>{contact.phone}</span>
-                    </div>
-                  )}
-                  {contact.addressLine1 && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-gray-500" />
-                      <span>
-                        {contact.addressLine1}
-                        {contact.addressLine2 && `, ${contact.addressLine2}`}
-                        {contact.state && `, ${contact.state}`}
-                        {contact.postcode && ` ${contact.postcode}`}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <span>Created: {new Date(contact.createdAt).toLocaleDateString()}</span>
-                  </div>
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditContact(contact)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteContact(contact.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-
-                {contact.notes && (
-                  <div className="mt-3 text-sm text-gray-600">
-                    <p className="italic">"{contact.notes}"</p>
-                  </div>
-                )}
               </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleViewContact(contact)}
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEditContact(contact)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeleteContact(contact.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
       {/* Empty State */}
