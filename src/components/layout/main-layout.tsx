@@ -145,7 +145,7 @@ export function MainLayout({
                   height={40}
                   className="object-contain brightness-0 invert"
                   priority
-                  style={{ filter: 'brightness(0) invert(1)' }}
+                  style={{ filter: 'brightness(0) invert(1)', width: 'auto', height: 'auto' }}
                 />
               </div>
               <button
@@ -316,9 +316,10 @@ export function MainLayout({
                 src="/logo-color.png"
                 alt="Bugal Logo"
                 width={40}
-                height={12}
+                height={40}
                 className="object-contain"
                 priority
+                style={{ width: 'auto', height: 'auto' }}
               />
               <h1 className="text-lg font-semibold text-gray-900">{headerConfig.title}</h1>
             </div>

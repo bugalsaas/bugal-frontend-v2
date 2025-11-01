@@ -89,6 +89,7 @@ export default function VerifyEmailPage() {
               width={128}
               height={128}
               className="mx-auto"
+              priority
             />
           </div>
           <h2 className="text-2xl font-bold text-gray-900">
