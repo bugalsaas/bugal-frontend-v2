@@ -37,20 +37,8 @@ export default function ContactsPage() {
   const headerConfig = {
     title: "Contacts",
     subtitle: "Contacts overview",
-    showSearch: true,
-    showFilters: true,
-    showAddButton: true,
-    addButtonText: "Add Contact",
-    searchPlaceholder: "Search contacts...",
-    onAddClick: handleAddContact,
-    onSearchChange: (value: string) => {
-      // This will be handled by the ContactsList component
-      console.log('Search changed:', value);
-    },
-    onFilterClick: () => {
-      // This will be handled by the ContactsList component
-      console.log('Filter clicked');
-    },
+    showSearch: false,
+    showAddButton: false,
   };
 
   return (

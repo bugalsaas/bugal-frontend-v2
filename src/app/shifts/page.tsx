@@ -49,20 +49,8 @@ export default function ShiftsPage() {
   const headerConfig = {
     title: "Shifts",
     subtitle: "Shifts overview",
-    showSearch: true,
-    showFilters: true,
-    showAddButton: true,
-    addButtonText: "Add Shift",
-    searchPlaceholder: "Search shifts...",
-    onAddClick: handleAddShift,
-    onSearchChange: (value: string) => {
-      // This will be handled by the ShiftsList component
-      console.log('Search changed:', value);
-    },
-    onFilterClick: () => {
-      // This will be handled by the ShiftsList component
-      console.log('Filter clicked');
-    },
+    showSearch: false,
+    showAddButton: false,
   };
 
   return (

@@ -73,20 +73,8 @@ export default function InvoicesPage() {
   const headerConfig = {
     title: "Invoices",
     subtitle: "Invoices overview",
-    showSearch: true,
-    showFilters: true,
-    showAddButton: true,
-    addButtonText: "Add Invoice",
-    searchPlaceholder: "Search invoices...",
-    onAddClick: handleAddInvoice,
-    onSearchChange: (value: string) => {
-      // This will be handled by the InvoicesList component
-      console.log('Search changed:', value);
-    },
-    onFilterClick: () => {
-      // This will be handled by the InvoicesList component
-      console.log('Filter clicked');
-    },
+    showSearch: false,
+    showAddButton: false,
   };
 
   return (
