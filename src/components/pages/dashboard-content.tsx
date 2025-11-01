@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { DashboardPeriod } from '@/lib/api/dashboard-service';
 import { PeriodSelector } from '@/components/ui/period-selector';
 import { DashboardSummary } from '@/components/pages/dashboard-summary';
+import { UserSelector } from '@/components/ui/user-selector';
 
 export function DashboardContent() {
   const router = useRouter();
@@ -30,6 +31,15 @@ export function DashboardContent() {
   // Show admin tiles if user is platform admin OR organization admin
   const isAdmin = (user?.isAdmin || false) || isOrganizationAdmin;
   
+  // User selection for filtering dashboard data
+  // Default to '-1' (All users) if user has permission, otherwise undefined (current user only)
+  // Note: API expects '-1' for all users, specific userId for that user, or undefined for current user
+  const [selectedUserId, setSelectedUserId] = useState<string | undefined>(
+    isOrganizationAdmin ? '-1' : undefined
+  );
+  
+  // Pass selectedUserId to dashboard data hook
+  // The API methods handle: '-1' = all users, specific userId = that user, undefined = current user
   const { 
     todaysShifts, 
     pendingShifts, 
@@ -38,7 +48,7 @@ export function DashboardContent() {
     summary,
     isLoading, 
     error 
-  } = useDashboardData(undefined, period);
+  } = useDashboardData(selectedUserId, period);
 
   if (isLoading) {
     return (
@@ -70,6 +80,19 @@ export function DashboardContent() {
 
   return (
     <div className="space-y-6">
+      {/* User Selection Dropdown - Only show if user has permission */}
+      {isOrganizationAdmin && (
+        <div className="mb-4">
+          <UserSelector
+            value={selectedUserId || '-1'}
+            onValueChange={(value) => {
+              // Store the selected value as-is: '-1' for all users, or specific user ID
+              setSelectedUserId(value);
+            }}
+          />
+        </div>
+      )}
+      
       {/* Stats Cards - Using real data */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Today's Shifts */}
