@@ -15,7 +15,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Contact, ContactType, ContactStatus } from '@/lib/api/contacts-service';
 import { useContactActions } from '@/hooks/use-contacts';
-import { Phone, Mail, MapPin, User, Building, Plus, Trash2, Calendar } from 'lucide-react';
+import { Phone, Mail, MapPin, User, Building, Plus, Trash2, Calendar, Edit } from 'lucide-react';
 import { DatePickerField } from '@/components/form/date-picker-field';
 
 // Form validation schema
@@ -52,15 +52,17 @@ interface ContactModalProps {
   mode: 'new' | 'edit' | 'view';
   contact?: Contact;
   onSave?: (contact: Contact) => void;
+  onEdit?: (contact: Contact) => void;
+  onDelete?: (contactId: string) => void;
 }
 
-export function ContactModal({ isOpen, onClose, mode, contact, onSave }: ContactModalProps) {
+export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, onDelete }: ContactModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [hasGuardian, setHasGuardian] = useState(false);
   const [hasOrganisationContact, setHasOrganisationContact] = useState(false);
   const [invoiceRecipients, setInvoiceRecipients] = useState<Array<{ email: string; role: string }>>([]);
 
-  const { createContact, updateContact, isSaving } = useContactActions();
+  const { createContact, updateContact, deleteContact, isSaving, isDeleting } = useContactActions();
 
   const isReadOnly = mode === 'view';
   const isClient = contact?.contactType === ContactType.Client;
@@ -761,6 +763,45 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave }: Contact
             </div>
 
             <div className="flex space-x-2">
+              {isReadOnly && onEdit && contact && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    onEdit(contact);
+                    onClose();
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              )}
+              
+              {isReadOnly && onDelete && contact && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={async () => {
+                    if (confirm('Are you sure you want to delete this contact?')) {
+                      try {
+                        if (onDelete) {
+                          await onDelete(contact.id);
+                        } else {
+                          await deleteContact(contact.id);
+                        }
+                        onClose();
+                      } catch (error) {
+                        console.error('Failed to delete contact:', error);
+                      }
+                    }
+                  }}
+                  disabled={isDeleting}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </Button>
+              )}
+              
               <Button type="button" variant="outline" onClick={onClose}>
                 {isReadOnly ? 'Close' : 'Cancel'}
               </Button>
