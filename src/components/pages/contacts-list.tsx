@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useContacts, useContactActions } from '@/hooks/use-contacts';
 import { ContactType, ContactStatus, Contact } from '@/lib/api/contacts-service';
 import { Button } from '@/components/ui/button';
@@ -24,9 +24,10 @@ interface ContactsListProps {
   onAddContact: () => void;
   onEditContact: (contact: Contact) => void;
   onViewContact: (contact: Contact) => void;
+  searchValue?: string;
 }
 
-export function ContactsList({ onAddContact, onEditContact, onViewContact }: ContactsListProps) {
+export function ContactsList({ onAddContact, onEditContact, onViewContact, searchValue }: ContactsListProps) {
   const router = useRouter();
 
   const {
@@ -35,7 +36,15 @@ export function ContactsList({ onAddContact, onEditContact, onViewContact }: Con
     error,
     total,
     reloadList,
+    setFilter,
   } = useContacts();
+
+  // Update filter when searchValue prop changes
+  React.useEffect(() => {
+    if (searchValue !== undefined) {
+      setFilter({ search: searchValue });
+    }
+  }, [searchValue, setFilter]);
 
   const { deleteContact, selectContact } = useContactActions();
 

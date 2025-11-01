@@ -11,7 +11,7 @@ export default function ContactsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'new' | 'edit' | 'view'>('new');
   const [selectedContact, setSelectedContact] = useState<Contact | undefined>();
-  const [listKey, setListKey] = useState(0); // Force re-render of ContactsList
+  const [searchValue, setSearchValue] = useState('');
 
   const { deleteContact } = useContactActions();
 
@@ -35,26 +35,32 @@ export default function ContactsPage() {
 
   const handleSaveContact = (contact: Contact) => {
     console.log('Contact saved:', contact);
-    // Force ContactsList to refresh by changing key
-    setListKey(prev => prev + 1);
+    // ContactsList will refresh automatically via the hook
   };
 
   const handleDeleteContact = async (contactId: string) => {
     try {
       await deleteContact(contactId);
-      // Force ContactsList to refresh by changing key
-      setListKey(prev => prev + 1);
+      // ContactsList will refresh automatically via the hook
     } catch (error) {
       console.error('Failed to delete contact:', error);
       throw error; // Re-throw so modal can handle error state
     }
   };
 
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value);
+  };
+
   const headerConfig = {
     title: "Contacts",
     subtitle: "Contacts overview",
-    showSearch: false,
-    showAddButton: false,
+    showSearch: true,
+    showAddButton: true,
+    addButtonText: "New Contact",
+    searchPlaceholder: "Search contacts...",
+    onSearchChange: handleSearchChange,
+    onAddClick: handleAddContact,
   };
 
   return (
@@ -65,10 +71,10 @@ export default function ContactsPage() {
       user={{ name: "User", initials: "U" }}
     >
       <ContactsList 
-        key={listKey}
         onAddContact={handleAddContact}
         onEditContact={handleEditContact}
         onViewContact={handleViewContact}
+        searchValue={searchValue}
       />
       
       <ContactModal
