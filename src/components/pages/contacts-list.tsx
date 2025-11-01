@@ -157,9 +157,11 @@ export function ContactsList({ onAddContact, onEditContact, onViewContact }: Con
                         {contact.fullName}
                       </h3>
                     </div>
-                    <Badge variant={getStatusBadgeVariant(contact.status)}>
-                      {contact.status}
-                    </Badge>
+                    {contact.status && contact.status !== '-' && (
+                      <Badge variant={getStatusBadgeVariant(contact.status)}>
+                        {contact.status}
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
