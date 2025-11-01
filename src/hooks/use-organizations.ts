@@ -312,7 +312,7 @@ export function useRoles(idOrganization: string) {
 
 export function useCountries() {
   const [data, setData] = useState<Country[]>([]);
-  Associated [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadCountries = useCallback(async () => {

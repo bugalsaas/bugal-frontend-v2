@@ -13,35 +13,84 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Contact, ContactType, ContactStatus } from '@/lib/api/contacts-service';
+import { Contact, ContactType, ContactStatus, State } from '@/lib/api/contacts-service';
+import { Gender, RelationshipType, RoleType, RoleTypeToText, RelationshipTypeToText, GenderToText } from '@/lib/types/contact-types';
 import { useContactActions } from '@/hooks/use-contacts';
-import { Phone, Mail, MapPin, User, Building, Plus, Trash2, Calendar, Edit } from 'lucide-react';
+import { useCountries, useStates } from '@/hooks/use-organizations';
+import { useAuth } from '@/contexts/auth-context';
+import { Phone, Mail, MapPin, User, Building, Plus, Trash2, Edit } from 'lucide-react';
 import { DatePickerField } from '@/components/form/date-picker-field';
 
 // Form validation schema
 const contactSchema = z.object({
-  fullName: z.string().min(1, 'Name is required'),
+  // Client fields (required when contactType is Client)
+  firstName: z.string().min(1, 'First Name is required').optional().or(z.literal('')),
+  lastName: z.string().min(1, 'Surname is required').optional().or(z.literal('')),
+  fullName: z.string().optional(), // For display/backward compatibility
+  ndisNumber: z.string().optional(),
+  gender: z.nativeEnum(Gender).optional(),
+  // Organisation fields (required when contactType is Organisation)
+  organisationName: z.string().min(1, 'Organisation Name is required').optional().or(z.literal('')),
+  // Common fields
   email: z.string().email('Invalid email').optional().or(z.literal('')),
-  phone: z.string().optional(),
+  mobileNumber: z.string().optional(),
+  phone: z.string().optional(), // Keep for backward compatibility
   addressLine1: z.string().optional(),
   addressLine2: z.string().optional(),
-  state: z.string().optional(),
+  state: z.string().optional(), // For display
+  idState: z.string().optional(), // State ID for backend
   postcode: z.string().optional(),
   contactType: z.nativeEnum(ContactType),
-  status: z.nativeEnum(ContactStatus),
+  status: z.nativeEnum(ContactStatus).optional(),
   notes: z.string().optional(),
   dob: z.string().optional(),
   // Guardian fields
   hasGuardian: z.boolean().optional(),
-  guardianName: z.string().optional(),
+  guardianFirstName: z.string().min(1, 'Guardian First Name is required').optional().or(z.literal('')),
+  guardianLastName: z.string().min(1, 'Guardian Surname is required').optional().or(z.literal('')),
   guardianEmail: z.string().email().optional().or(z.literal('')),
-  guardianPhone: z.string().optional(),
-  guardianRelationship: z.string().optional(),
+  guardianPhoneNumber: z.string().optional(),
+  guardianRelationshipType: z.nativeEnum(RelationshipType).optional(),
   // Organisation contact fields
   hasOrganisationContact: z.boolean().optional(),
-  organisationContactName: z.string().optional(),
+  organisationContactName: z.string().min(1, 'Contact Name is required').optional().or(z.literal('')),
   organisationContactEmail: z.string().email().optional().or(z.literal('')),
-  organisationContactPhone: z.string().optional(),
+  organisationContactMobileNumber: z.string().optional(),
+}).refine((data) => {
+  // If Client, firstName and lastName are required
+  if (data.contactType === ContactType.Client) {
+    const hasFirstName = data.firstName && data.firstName.trim().length > 0;
+    const hasLastName = data.lastName && data.lastName.trim().length > 0;
+    return hasFirstName && hasLastName;
+  }
+  // If Organisation, organisationName is required
+  if (data.contactType === ContactType.Organisation) {
+    return data.organisationName && data.organisationName.trim().length > 0;
+  }
+  return true;
+}, {
+  message: 'Client requires First Name and Surname, Organisation requires Name',
+  path: ['firstName'], // This will show error on firstName field
+}).refine((data) => {
+  // If hasGuardian is true, guardian firstName and lastName are required
+  if (data.hasGuardian) {
+    const hasFirstName = data.guardianFirstName && data.guardianFirstName.trim().length > 0;
+    const hasLastName = data.guardianLastName && data.guardianLastName.trim().length > 0;
+    return hasFirstName && hasLastName;
+  }
+  return true;
+}, {
+  message: 'Guardian First Name and Surname are required when guardian information is added',
+  path: ['guardianFirstName'],
+}).refine((data) => {
+  // If hasOrganisationContact is true, organisationContactName is required
+  if (data.hasOrganisationContact) {
+    return data.organisationContactName && data.organisationContactName.trim().length > 0;
+  }
+  return true;
+}, {
+  message: 'Contact Name is required when organisation contact is added',
+  path: ['organisationContactName'],
 });
 
 type ContactFormData = z.infer<typeof contactSchema>;
@@ -60,9 +109,44 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
   const [currentStep, setCurrentStep] = useState(1);
   const [hasGuardian, setHasGuardian] = useState(false);
   const [hasOrganisationContact, setHasOrganisationContact] = useState(false);
-  const [invoiceRecipients, setInvoiceRecipients] = useState<Array<{ email: string; role: string }>>([]);
+  const [invoiceRecipients, setInvoiceRecipients] = useState<Array<{ email: string; roleType: RoleType }>>([]);
+  // Start with empty string - we'll set Australia ID after countries load
+  // This prevents calling API with potentially wrong ID format
+  const [australiaCountryId, setAustraliaCountryId] = useState<string>('');
 
+  const { user } = useAuth();
+  const { countries, isLoading: countriesLoading } = useCountries();
+  // Always use Australia for states since we only operate in Australia
+  // Only fetch states when we have a valid country ID
+  const { states, isLoading: statesLoading } = useStates(australiaCountryId || '');
   const { createContact, updateContact, deleteContact, isSaving, isDeleting } = useContactActions();
+
+  // Find and set Australia country ID when countries load
+  useEffect(() => {
+    if (countries.length > 0 && !australiaCountryId) {
+      // Find Australia by name, code, or ID
+      const aus = countries.find(c => {
+        const name = (c.name || '').toLowerCase();
+        const code = (c.code || '').toLowerCase();
+        const id = String(c.id || '');
+        return name.includes('australia') || code === 'au' || id === '1';
+      });
+      // Set the actual ID from the API response
+      if (aus) {
+        setAustraliaCountryId(String(aus.id));
+      } else if (countries.length > 0) {
+        // Fallback: try ID '1' directly
+        const country1 = countries.find(c => String(c.id) === '1');
+        if (country1) {
+          setAustraliaCountryId(String(country1.id));
+        } else {
+          // Last resort: use first country (should be Australia)
+          console.warn('Australia not found in countries list, using first country');
+          setAustraliaCountryId(String(countries[0].id));
+        }
+      }
+    }
+  }, [countries, australiaCountryId]);
 
   const isReadOnly = mode === 'view';
   const isClient = contact?.contactType === ContactType.Client;
@@ -71,26 +155,34 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
     defaultValues: {
+      firstName: '',
+      lastName: '',
       fullName: '',
+      organisationName: '',
       email: '',
+      mobileNumber: '',
       phone: '',
       addressLine1: '',
       addressLine2: '',
       state: '',
+      idState: '',
       postcode: '',
       contactType: ContactType.Client,
       status: ContactStatus.Active,
       notes: '',
       dob: '',
+      ndisNumber: '',
+      gender: undefined,
       hasGuardian: false,
-      guardianName: '',
+      guardianFirstName: '',
+      guardianLastName: '',
       guardianEmail: '',
-      guardianPhone: '',
-      guardianRelationship: '',
+      guardianPhoneNumber: '',
+      guardianRelationshipType: undefined,
       hasOrganisationContact: false,
       organisationContactName: '',
       organisationContactEmail: '',
-      organisationContactPhone: '',
+      organisationContactMobileNumber: '',
     },
   });
 
@@ -102,66 +194,167 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
       setHasGuardian(false);
       setHasOrganisationContact(false);
       setInvoiceRecipients([]);
+      // Ensure Australia is set for new contacts (default is '1', verify when countries load)
+      if (!australiaCountryId) {
+        setAustraliaCountryId('1');
+      }
       form.reset({
+        firstName: '',
+        lastName: '',
         fullName: '',
+        organisationName: '',
         email: '',
+        mobileNumber: '',
         phone: '',
         addressLine1: '',
         addressLine2: '',
         state: '',
+        idState: '',
         postcode: '',
         contactType: ContactType.Client,
         status: ContactStatus.Active,
         notes: '',
         dob: '',
+        ndisNumber: '',
+        gender: undefined,
         hasGuardian: false,
-        guardianName: '',
+        guardianFirstName: '',
+        guardianLastName: '',
         guardianEmail: '',
-        guardianPhone: '',
-        guardianRelationship: '',
+        guardianPhoneNumber: '',
+        guardianRelationshipType: undefined,
         hasOrganisationContact: false,
         organisationContactName: '',
         organisationContactEmail: '',
-        organisationContactPhone: '',
+        organisationContactMobileNumber: '',
       });
     } else if (contact && (mode === 'edit' || mode === 'view')) {
+      // Australia will be set automatically when countries load via the useEffect above
+      // Extract state ID if state is an object
+      const stateId = typeof contact.state === 'object' && contact.state !== null 
+        ? (contact.state as { id?: string }).id || contact.idState || ''
+        : contact.idState || '';
+      const stateDisplay = typeof contact.state === 'object' && contact.state !== null
+        ? (contact.state as { name?: string }).name || ''
+        : (typeof contact.state === 'string' ? contact.state : '');
+
+      // Load invoice recipients (support both field names)
+      const recipients = contact.invoiceRecipients || contact.invoices || [];
+      const mappedRecipients = recipients.map(r => {
+        // Map old role string to roleType enum if needed
+        const role = (r as any).roleType || (r as any).role;
+        let roleType = RoleType.Other;
+        if (typeof role === 'string' && role in RoleType) {
+          roleType = role as RoleType;
+        } else if (role) {
+          // Try to map common role strings to enum values
+          const roleMap: Record<string, RoleType> = {
+            'Accounts Department': RoleType.AccountsDepartment,
+            'Support Coordinator': RoleType.Coordinator,
+            'NDIS Contact': RoleType.NDISContact,
+            'Other Guardian': RoleType.OtherGuardian,
+            'Other': RoleType.Other,
+            'Plan Manager': RoleType.PlanManager,
+          };
+          roleType = roleMap[role] || RoleType.Other;
+        }
+        return {
+          email: r.email,
+          roleType,
+        };
+      });
+      setInvoiceRecipients(mappedRecipients);
+      setHasGuardian(contact.hasGuardian || false);
+      setHasOrganisationContact(contact.hasOrganisationContact || false);
+
       // Load contact data for edit/view
       form.reset({
-        fullName: contact.fullName,
+        firstName: contact.firstName || '',
+        lastName: contact.lastName || '',
+        fullName: contact.fullName || '',
+        organisationName: contact.organisationName || '',
         email: contact.email || '',
-        phone: contact.phone || '',
+        mobileNumber: contact.mobileNumber || contact.phone || '',
+        phone: contact.phone || contact.mobileNumber || '',
         addressLine1: contact.addressLine1 || '',
         addressLine2: contact.addressLine2 || '',
-        state: contact.state || '',
+        state: stateDisplay,
+        idState: stateId,
         postcode: contact.postcode || '',
         contactType: contact.contactType,
-        status: contact.status,
+        status: contact.status || ContactStatus.Active,
         notes: contact.notes || '',
         dob: contact.dob || '',
-        hasGuardian: false, // Will be set based on data
-        guardianName: '',
-        guardianEmail: '',
-        guardianPhone: '',
-        guardianRelationship: '',
-        hasOrganisationContact: false,
-        organisationContactName: '',
-        organisationContactEmail: '',
-        organisationContactPhone: '',
+        ndisNumber: contact.ndisNumber || '',
+        gender: contact.gender,
+        hasGuardian: contact.hasGuardian || false,
+        guardianFirstName: contact.guardianFirstName || '',
+        guardianLastName: contact.guardianLastName || '',
+        guardianEmail: contact.guardianEmail || '',
+        guardianPhoneNumber: contact.guardianPhoneNumber || contact.guardianPhone || '',
+        guardianRelationshipType: contact.guardianRelationshipType,
+        hasOrganisationContact: contact.hasOrganisationContact || false,
+        organisationContactName: contact.organisationContactName || '',
+        organisationContactEmail: contact.organisationContactEmail || '',
+        organisationContactMobileNumber: contact.organisationContactMobileNumber || contact.organisationContactPhone || '',
       });
     }
-  }, [contact, mode, form]);
+  }, [contact, mode, form, countries, australiaCountryId]);
 
   const onSubmit = async (data: ContactFormData) => {
     try {
-      const contactData = {
-        ...data,
-        id: contact?.id || Date.now().toString(),
-        createdAt: contact?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+      // Structure data according to backend DTOs
+      const contactData: Partial<Contact> = {
+        contactType: data.contactType,
+        status: data.status || ContactStatus.Active,
+        email: data.email || undefined,
+        mobileNumber: data.mobileNumber || undefined,
+        addressLine1: data.addressLine1 || undefined,
+        addressLine2: data.addressLine2 || undefined,
+        idState: data.idState || undefined,
+        postcode: data.postcode || undefined,
+        notes: data.notes || undefined,
+        dob: data.dob || undefined,
       };
 
+      // Client-specific fields
+      if (data.contactType === ContactType.Client) {
+        contactData.firstName = data.firstName || '';
+        contactData.lastName = data.lastName || '';
+        contactData.ndisNumber = data.ndisNumber || undefined;
+        contactData.gender = data.gender;
+        // Guardian fields
+        if (data.hasGuardian) {
+          contactData.hasGuardian = true;
+          contactData.guardianFirstName = data.guardianFirstName || '';
+          contactData.guardianLastName = data.guardianLastName || '';
+          contactData.guardianEmail = data.guardianEmail || undefined;
+          contactData.guardianPhoneNumber = data.guardianPhoneNumber || undefined;
+          contactData.guardianRelationshipType = data.guardianRelationshipType;
+        }
+        // Invoice recipients for clients
+        if (invoiceRecipients.length > 0) {
+          contactData.invoices = invoiceRecipients.map(r => ({
+            email: r.email,
+            roleType: r.roleType,
+          }));
+        }
+      }
+
+      // Organisation-specific fields
+      if (data.contactType === ContactType.Organisation) {
+        contactData.organisationName = data.organisationName || '';
+        // Organisation contact fields
+        if (data.hasOrganisationContact) {
+          contactData.hasOrganisationContact = true;
+          contactData.organisationContactName = data.organisationContactName || '';
+          contactData.organisationContactEmail = data.organisationContactEmail || undefined;
+          contactData.organisationContactMobileNumber = data.organisationContactMobileNumber || undefined;
+        }
+      }
+
       if (mode === 'new') {
-        const newContact = await createContact(contactData);
+        const newContact = await createContact(contactData as Omit<Contact, 'id' | 'createdAt' | 'updatedAt'>);
         onSave?.(newContact);
       } else if (mode === 'edit' && contact?.id) {
         const updatedContact = await updateContact(contact.id, contactData);
@@ -175,7 +368,7 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
   };
 
   const addInvoiceRecipient = () => {
-    setInvoiceRecipients([...invoiceRecipients, { email: '', role: 'Accounts Department' }]);
+    setInvoiceRecipients([...invoiceRecipients, { email: '', roleType: RoleType.AccountsDepartment }]);
   };
 
   const removeInvoiceRecipient = (index: number) => {
@@ -221,31 +414,88 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
 
       <div>
         <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+        {form.watch('contactType') === ContactType.Client ? (
+          <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="fullName">Full Name *</Label>
+                <Label htmlFor="firstName">First Name *</Label>
             <Input
-              id="fullName"
-              {...form.register('fullName')}
+                  id="firstName"
+                  {...form.register('firstName')}
               disabled={isReadOnly}
-              placeholder="Enter full name"
+                  placeholder="Enter first name"
             />
-            {form.formState.errors.fullName && (
-              <p className="text-red-500 text-sm mt-1">{form.formState.errors.fullName.message}</p>
+                {form.formState.errors.firstName && (
+                  <p className="text-red-500 text-sm mt-1">{form.formState.errors.firstName.message}</p>
             )}
           </div>
-
-          {form.watch('contactType') === ContactType.Client && (
-            <DatePickerField
-              label="Date of Birth"
-              id="dob"
-              value={form.watch('dob')}
-              onChange={(value) => form.setValue('dob', value)}
-              error={form.formState.errors.dob}
+            <div>
+                <Label htmlFor="lastName">Surname *</Label>
+              <Input
+                  id="lastName"
+                  {...form.register('lastName')}
+                  disabled={isReadOnly}
+                  placeholder="Enter surname"
+                />
+                {form.formState.errors.lastName && (
+                  <p className="text-red-500 text-sm mt-1">{form.formState.errors.lastName.message}</p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="ndisNumber">NDIS Number</Label>
+                <Input
+                  id="ndisNumber"
+                  {...form.register('ndisNumber')}
+                  disabled={isReadOnly}
+                  placeholder="Enter NDIS number"
+                />
+              </div>
+              <div>
+                <Label htmlFor="gender">Gender</Label>
+                <Select
+                  value={form.watch('gender') || ''}
+                  onValueChange={(value) => form.setValue('gender', value ? (value as Gender) : undefined)}
+                  disabled={isReadOnly}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={Gender.Male}>Male</SelectItem>
+                    <SelectItem value={Gender.Female}>Female</SelectItem>
+                    <SelectItem value={Gender.Other}>Other</SelectItem>
+                    <SelectItem value={Gender.PreferNotToSay}>Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <DatePickerField
+                label="Date of Birth"
+                id="dob"
+                value={form.watch('dob')}
+                onChange={(value) => form.setValue('dob', value)}
+                error={form.formState.errors.dob}
+                disabled={isReadOnly}
+              />
+            </div>
+          </div>
+        ) : (
+          <div>
+            <Label htmlFor="organisationName">Name *</Label>
+            <Input
+              id="organisationName"
+              {...form.register('organisationName')}
               disabled={isReadOnly}
+              placeholder="Enter organisation name"
             />
+            {form.formState.errors.organisationName && (
+              <p className="text-red-500 text-sm mt-1">{form.formState.errors.organisationName.message}</p>
           )}
         </div>
+        )}
       </div>
     </div>
   );
@@ -275,15 +525,15 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
             </div>
 
             <div>
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="mobileNumber">Mobile Number</Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  id="phone"
-                  {...form.register('phone')}
+                  id="mobileNumber"
+                  {...form.register('mobileNumber')}
                   disabled={isReadOnly}
                   className="pl-10"
-                  placeholder="Enter phone number"
+                  placeholder="Enter mobile number"
                 />
               </div>
             </div>
@@ -315,24 +565,36 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
             </div>
 
             <div>
-              <Label htmlFor="state">State</Label>
+              <Label htmlFor="idState">State</Label>
               <Select
-                value={form.watch('state')}
-                onValueChange={(value) => form.setValue('state', value)}
-                disabled={isReadOnly}
+                value={form.watch('idState') || ''}
+                onValueChange={(value) => {
+                  form.setValue('idState', value);
+                  // Also update state display name
+                  const selectedState = states.find(s => s.id === value);
+                  if (selectedState) {
+                    form.setValue('state', selectedState.name);
+                  }
+                }}
+                disabled={isReadOnly || statesLoading || !australiaCountryId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select state" />
+                  <SelectValue placeholder={statesLoading || !australiaCountryId ? "Loading states..." : states.length === 0 ? "No states available" : "Select state"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="VIC">Victoria</SelectItem>
-                  <SelectItem value="NSW">New South Wales</SelectItem>
-                  <SelectItem value="QLD">Queensland</SelectItem>
-                  <SelectItem value="WA">Western Australia</SelectItem>
-                  <SelectItem value="SA">South Australia</SelectItem>
-                  <SelectItem value="TAS">Tasmania</SelectItem>
-                  <SelectItem value="ACT">Australian Capital Territory</SelectItem>
-                  <SelectItem value="NT">Northern Territory</SelectItem>
+                  {states.length > 0 ? (
+                    states.map((state) => (
+                      <SelectItem key={state.id} value={state.id}>
+                        {state.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    !statesLoading && australiaCountryId && (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        No states available
+                      </div>
+                    )
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -405,33 +667,29 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="guardianName">Guardian Name</Label>
+                  <Label htmlFor="guardianFirstName">Guardian First Name *</Label>
                   <Input
-                    id="guardianName"
-                    {...form.register('guardianName')}
+                    id="guardianFirstName"
+                    {...form.register('guardianFirstName')}
                     disabled={isReadOnly}
-                    placeholder="Enter guardian name"
+                    placeholder="Enter guardian first name"
                   />
+                  {form.formState.errors.guardianFirstName && (
+                    <p className="text-red-500 text-sm mt-1">{form.formState.errors.guardianFirstName.message}</p>
+                  )}
                 </div>
 
                 <div>
-                  <Label htmlFor="guardianRelationship">Relationship</Label>
-                  <Select
-                    value={form.watch('guardianRelationship')}
-                    onValueChange={(value) => form.setValue('guardianRelationship', value)}
+                  <Label htmlFor="guardianLastName">Guardian Surname *</Label>
+                  <Input
+                    id="guardianLastName"
+                    {...form.register('guardianLastName')}
                     disabled={isReadOnly}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select relationship" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="parent">Parent</SelectItem>
-                      <SelectItem value="guardian">Guardian</SelectItem>
-                      <SelectItem value="carer">Carer</SelectItem>
-                      <SelectItem value="family">Family Member</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    placeholder="Enter guardian surname"
+                  />
+                  {form.formState.errors.guardianLastName && (
+                    <p className="text-red-500 text-sm mt-1">{form.formState.errors.guardianLastName.message}</p>
+                  )}
                 </div>
               </div>
 
@@ -448,14 +706,35 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
                 </div>
 
                 <div>
-                  <Label htmlFor="guardianPhone">Guardian Phone</Label>
+                  <Label htmlFor="guardianPhoneNumber">Guardian Phone Number</Label>
                   <Input
-                    id="guardianPhone"
-                    {...form.register('guardianPhone')}
+                    id="guardianPhoneNumber"
+                    {...form.register('guardianPhoneNumber')}
                     disabled={isReadOnly}
-                    placeholder="Enter guardian phone"
+                    placeholder="Enter guardian phone number"
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="guardianRelationshipType">Relationship</Label>
+                <Select
+                  value={form.watch('guardianRelationshipType') || ''}
+                  onValueChange={(value) => form.setValue('guardianRelationshipType', value ? (value as RelationshipType) : undefined)}
+                  disabled={isReadOnly}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select relationship" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={RelationshipType.Parent}>Parent</SelectItem>
+                    <SelectItem value={RelationshipType.Sibling}>Sibling</SelectItem>
+                    <SelectItem value={RelationshipType.OtherFamilyMember}>Other Family Member</SelectItem>
+                    <SelectItem value={RelationshipType.LegalGuardian}>Legal Guardian</SelectItem>
+                    <SelectItem value={RelationshipType.SupportCoordinator}>Support Coordinator</SelectItem>
+                    <SelectItem value={RelationshipType.Other}>Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
@@ -500,12 +779,12 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
                 </div>
 
                 <div>
-                  <Label htmlFor="organisationContactPhone">Contact Phone</Label>
+                  <Label htmlFor="organisationContactMobileNumber">Contact Mobile Number</Label>
                   <Input
-                    id="organisationContactPhone"
-                    {...form.register('organisationContactPhone')}
+                    id="organisationContactMobileNumber"
+                    {...form.register('organisationContactMobileNumber')}
                     disabled={isReadOnly}
-                    placeholder="Enter contact phone"
+                    placeholder="Enter contact mobile number"
                   />
                 </div>
               </div>
@@ -538,24 +817,24 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
                     <div>
                       <Label>Role</Label>
                       <Select
-                        value={recipient.role}
+                        value={recipient.roleType || ''}
                         onValueChange={(value) => {
                           const newRecipients = [...invoiceRecipients];
-                          newRecipients[index].role = value;
+                          newRecipients[index].roleType = value as RoleType;
                           setInvoiceRecipients(newRecipients);
                         }}
                         disabled={isReadOnly}
                       >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select role" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Accounts Department">Accounts Department</SelectItem>
-                          <SelectItem value="Support Coordinator">Support Coordinator</SelectItem>
-                          <SelectItem value="NDIS Contact">NDIS Contact</SelectItem>
-                          <SelectItem value="Other Guardian">Other Guardian</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                          <SelectItem value="Plan Manager">Plan Manager</SelectItem>
+                          <SelectItem value={RoleType.AccountsDepartment}>{RoleTypeToText(RoleType.AccountsDepartment)}</SelectItem>
+                          <SelectItem value={RoleType.Coordinator}>{RoleTypeToText(RoleType.Coordinator)}</SelectItem>
+                          <SelectItem value={RoleType.NDISContact}>{RoleTypeToText(RoleType.NDISContact)}</SelectItem>
+                          <SelectItem value={RoleType.OtherGuardian}>{RoleTypeToText(RoleType.OtherGuardian)}</SelectItem>
+                          <SelectItem value={RoleType.Other}>{RoleTypeToText(RoleType.Other)}</SelectItem>
+                          <SelectItem value={RoleType.PlanManager}>{RoleTypeToText(RoleType.PlanManager)}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -604,24 +883,24 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
     return (
       <div className="space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            {contact?.contactType === ContactType.Organisation ? (
-              <Building className="h-8 w-8 text-purple-600" />
-            ) : (
-              <User className="h-8 w-8 text-blue-600" />
-            )}
-            <div>
-              <h3 className="text-xl font-semibold">{contact?.fullName}</h3>
-              <div className="flex items-center space-x-2">
-                <Badge variant="outline">{contact?.contactType}</Badge>
-                <Badge variant={contact?.status === ContactStatus.Active ? 'default' : 'secondary'}>
-                  {contact?.status}
-                </Badge>
-              </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          {contact?.contactType === ContactType.Organisation ? (
+            <Building className="h-8 w-8 text-purple-600" />
+          ) : (
+            <User className="h-8 w-8 text-blue-600" />
+          )}
+          <div>
+            <h3 className="text-xl font-semibold">{contact?.fullName}</h3>
+            <div className="flex items-center space-x-2">
+              <Badge variant="outline">{contact?.contactType}</Badge>
+              <Badge variant={contact?.status === ContactStatus.Active ? 'default' : 'secondary'}>
+                {contact?.status}
+              </Badge>
             </div>
           </div>
         </div>
+      </div>
 
         {/* Basic information */}
         <div>
@@ -630,9 +909,20 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
             {anyContact?.firstName && <div><span className="text-gray-500">Firstname</span><div>{anyContact.firstName}</div></div>}
             {anyContact?.lastName && <div><span className="text-gray-500">Surname</span><div>{anyContact.lastName}</div></div>}
             {anyContact?.ndisNumber && <div><span className="text-gray-500">NDIS number</span><div>{anyContact.ndisNumber}</div></div>}
-            {anyContact?.gender && <div><span className="text-gray-500">Gender</span><div>{anyContact.gender}</div></div>}
+            {anyContact?.gender && (
+              <div>
+                <span className="text-gray-500">Gender</span>
+                <div>{GenderToText(anyContact.gender as Gender)}</div>
+              </div>
+            )}
             {(anyContact?.mobileNumber || contact?.phone) && (
               <div><span className="text-gray-500">Mobile number</span><div>{anyContact.mobileNumber || contact?.phone}</div></div>
+            )}
+            {contact?.dob && (
+              <div>
+                <span className="text-gray-500">Date of Birth</span>
+                <div>{new Date(contact.dob).toLocaleDateString()}</div>
+              </div>
             )}
           </div>
         </div>
@@ -658,12 +948,6 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
                 </span>
               </div>
             )}
-            {contact?.dob && (
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-gray-500" />
-                <span className="text-sm">DOB: {new Date(contact.dob).toLocaleDateString()}</span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -672,10 +956,23 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
           <div>
             <h4 className="font-semibold mb-3">Additional contact</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              {anyContact?.guardianName && <div><span className="text-gray-500">Name</span><div>{anyContact.guardianName}</div></div>}
+              {(anyContact?.guardianFirstName || anyContact?.guardianLastName) && (
+                <div><span className="text-gray-500">Name</span><div>{[anyContact.guardianFirstName, anyContact.guardianLastName].filter(Boolean).join(' ')}</div></div>
+              )}
               {anyContact?.guardianEmail && <div><span className="text-gray-500">Email</span><div>{anyContact.guardianEmail}</div></div>}
-              {anyContact?.guardianPhone && <div><span className="text-gray-500">Phone number</span><div>{anyContact.guardianPhone}</div></div>}
-              {anyContact?.guardianRelationship && <div><span className="text-gray-500">Relationship</span><div>{anyContact.guardianRelationship}</div></div>}
+              {(anyContact?.guardianPhoneNumber || anyContact?.guardianPhone) && (
+                <div><span className="text-gray-500">Phone number</span><div>{anyContact.guardianPhoneNumber || anyContact.guardianPhone}</div></div>
+              )}
+              {(anyContact?.guardianRelationshipType || anyContact?.guardianRelationship) && (
+                <div>
+                  <span className="text-gray-500">Relationship</span>
+                  <div>
+                    {anyContact.guardianRelationshipType 
+                      ? RelationshipTypeToText(anyContact.guardianRelationshipType as RelationshipType)
+                      : anyContact.guardianRelationship}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -686,25 +983,30 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               {anyContact?.organisationContactName && <div><span className="text-gray-500">Contact Name</span><div>{anyContact.organisationContactName}</div></div>}
               {anyContact?.organisationContactEmail && <div><span className="text-gray-500">Contact Email</span><div>{anyContact.organisationContactEmail}</div></div>}
-              {anyContact?.organisationContactPhone && <div><span className="text-gray-500">Contact Phone</span><div>{anyContact.organisationContactPhone}</div></div>}
+              {(anyContact?.organisationContactMobileNumber || anyContact?.organisationContactPhone) && (
+                <div><span className="text-gray-500">Contact Phone</span><div>{anyContact.organisationContactMobileNumber || anyContact.organisationContactPhone}</div></div>
+              )}
             </div>
           </div>
         )}
 
         {/* Invoice recipients */}
-        {Array.isArray(contact?.invoiceRecipients) && contact!.invoiceRecipients!.length > 0 && (
+        {(Array.isArray(contact?.invoiceRecipients) && contact!.invoiceRecipients!.length > 0) || (Array.isArray(contact?.invoices) && contact!.invoices!.length > 0) ? (
           <div>
             <h4 className="font-semibold mb-3">Who will receive the invoices</h4>
             <div className="space-y-2 text-sm">
-              {contact!.invoiceRecipients!.map((r, idx) => (
+              {(contact?.invoiceRecipients || contact?.invoices || []).map((r: any, idx: number) => (
                 <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div><span className="text-gray-500">Email</span><div>{r.email}</div></div>
-                  <div><span className="text-gray-500">Role</span><div>{r.role}</div></div>
+                  <div>
+                    <span className="text-gray-500">Role</span>
+                    <div>{r.roleType ? RoleTypeToText(r.roleType as RoleType) : r.role || 'N/A'}</div>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Notes */}
         {contact?.notes && (
@@ -713,8 +1015,8 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
             <p className="text-sm text-gray-600">{contact.notes}</p>
           </div>
         )}
-      </div>
-    );
+    </div>
+  );
   };
 
   return (
@@ -784,7 +1086,6 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
                   variant="outline"
                   onClick={() => {
                     onEdit(contact);
-                    onClose();
                   }}
                 >
                   <Edit className="h-4 w-4 mr-2" />

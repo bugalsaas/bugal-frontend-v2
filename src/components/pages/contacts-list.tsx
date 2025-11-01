@@ -159,39 +159,50 @@ export function ContactsList({ onAddContact, onEditContact, onViewContact, searc
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="flex items-center gap-2">
-                      {getContactTypeIcon(contact.contactType)}
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {contact.fullName}
-                      </h3>
+                  {/* Grid layout: Name/Email (left) | Phone/Address (right) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Left column: Name and Email */}
+                    <div className="space-y-3">
+                      {/* First row: Name */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          {getContactTypeIcon(contact.contactType)}
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {contact.fullName || contact.organisationName}
+                          </h3>
+                        </div>
+                        {contact.status && contact.status !== '-' && (
+                          <Badge variant={getStatusBadgeVariant(contact.status)}>
+                            {contact.status}
+                          </Badge>
+                        )}
+                      </div>
+                      {/* Second row: Email */}
+                      {contact.email && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Mail className="h-4 w-4 text-gray-500" />
+                          <span>{contact.email}</span>
+                        </div>
+                      )}
                     </div>
-                    {contact.status && contact.status !== '-' && (
-                      <Badge variant={getStatusBadgeVariant(contact.status)}>
-                        {contact.status}
-                      </Badge>
-                    )}
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                    {contact.email && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-gray-500" />
-                        <span>{contact.email}</span>
-                      </div>
-                    )}
-                    {contact.phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-gray-500" />
-                        <span>{contact.phone}</span>
-                      </div>
-                    )}
-                    {formattedAddress && (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-gray-500" />
-                        <span>{formattedAddress}</span>
-                      </div>
-                    )}
+                    {/* Right column: Phone and Address */}
+                    <div className="space-y-3">
+                      {/* First row: Phone Number */}
+                      {(contact.mobileNumber || contact.phone) && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Phone className="h-4 w-4 text-gray-500" />
+                          <span>{contact.mobileNumber || contact.phone}</span>
+                        </div>
+                      )}
+                      {/* Second row: Address */}
+                      {formattedAddress && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <MapPin className="h-4 w-4 text-gray-500" />
+                          <span>{formattedAddress}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {contact.notes && (
