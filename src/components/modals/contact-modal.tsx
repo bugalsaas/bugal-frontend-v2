@@ -94,9 +94,38 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
     },
   });
 
-  // Reset form when contact changes
+  // Reset form when contact or mode changes
   useEffect(() => {
-    if (contact) {
+    if (mode === 'new') {
+      // Reset everything for new contact
+      setCurrentStep(1);
+      setHasGuardian(false);
+      setHasOrganisationContact(false);
+      setInvoiceRecipients([]);
+      form.reset({
+        fullName: '',
+        email: '',
+        phone: '',
+        addressLine1: '',
+        addressLine2: '',
+        state: '',
+        postcode: '',
+        contactType: ContactType.Client,
+        status: ContactStatus.Active,
+        notes: '',
+        dob: '',
+        hasGuardian: false,
+        guardianName: '',
+        guardianEmail: '',
+        guardianPhone: '',
+        guardianRelationship: '',
+        hasOrganisationContact: false,
+        organisationContactName: '',
+        organisationContactEmail: '',
+        organisationContactPhone: '',
+      });
+    } else if (contact && (mode === 'edit' || mode === 'view')) {
+      // Load contact data for edit/view
       form.reset({
         fullName: contact.fullName,
         email: contact.email || '',
@@ -119,10 +148,8 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
         organisationContactEmail: '',
         organisationContactPhone: '',
       });
-    } else {
-      form.reset();
     }
-  }, [contact, form]);
+  }, [contact, mode, form]);
 
   const onSubmit = async (data: ContactFormData) => {
     try {
@@ -159,7 +186,7 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-4">Contact Type</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card 
             className={`p-4 cursor-pointer transition-colors ${
               form.watch('contactType') === ContactType.Client ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'
@@ -171,21 +198,6 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
               <div>
                 <h4 className="font-medium">Client</h4>
                 <p className="text-sm text-gray-600">Individual person</p>
-              </div>
-            </div>
-          </Card>
-          
-          <Card 
-            className={`p-4 cursor-pointer transition-colors ${
-              form.watch('contactType') === ContactType.Staff ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'
-            }`}
-            onClick={() => form.setValue('contactType', ContactType.Staff)}
-          >
-            <div className="flex items-center space-x-3">
-              <User className="h-6 w-6 text-green-600" />
-              <div>
-                <h4 className="font-medium">Staff</h4>
-                <p className="text-sm text-gray-600">Employee</p>
               </div>
             </div>
           </Card>

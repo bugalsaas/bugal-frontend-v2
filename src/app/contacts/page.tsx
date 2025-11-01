@@ -16,8 +16,9 @@ export default function ContactsPage() {
   const { deleteContact } = useContactActions();
 
   const handleAddContact = () => {
-    setModalMode('new');
+    // Clear any previous contact data and set to new mode
     setSelectedContact(undefined);
+    setModalMode('new');
     setIsModalOpen(true);
   };
 
@@ -79,9 +80,15 @@ export default function ContactsPage() {
       
       <ContactModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          // Clear selected contact when modal closes to ensure clean state for next open
+          if (modalMode === 'new') {
+            setSelectedContact(undefined);
+          }
+        }}
         mode={modalMode}
-        contact={selectedContact}
+        contact={modalMode === 'new' ? undefined : selectedContact}
         onSave={handleSaveContact}
         onEdit={handleEditContact}
         onDelete={handleDeleteContact}
