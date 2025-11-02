@@ -23,7 +23,7 @@ import {
   Expense,
   Attachment 
 } from '@/lib/api/shifts-service';
-import { useShiftActions } from '@/hooks/use-shifts';
+import { useShiftActions, useShift } from '@/hooks/use-shifts';
 import { DatePickerInputField } from '@/components/form/date-picker-input-field';
 import { 
   Calendar, 
@@ -39,7 +39,8 @@ import {
   Trash2,
   Download,
   Upload,
-  Repeat
+  Repeat,
+  Loader2
 } from 'lucide-react';
 
 // Form validation schema
@@ -74,6 +75,8 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
   const [activeTab, setActiveTab] = useState('details');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [fetchedShift, setFetchedShift] = useState<Shift | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const isReadOnly = mode === 'view';
   const isCompleteMode = mode === 'complete';
@@ -87,6 +90,8 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
     isSaving, 
     isCompleting 
   } = useShiftActions();
+  
+  const { getOne, loading: isLoadingShift } = useShift();
 
   const form = useForm<ShiftFormData>({
     resolver: zodResolver(shiftSchema),
@@ -108,25 +113,59 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
     },
   });
 
-  // Reset form when shift changes
+  // Fetch full shift details when modal opens in edit/view/duplicate modes
   useEffect(() => {
-    if (shift) {
-      const startDate = new Date(shift.startDate);
+    if (isOpen && shift?.id && (mode === 'edit' || mode === 'view' || mode === 'duplicate')) {
+      const fetchShiftData = async () => {
+        try {
+          setFetchError(null);
+          const fullShift = await getOne(shift.id);
+          setFetchedShift(fullShift);
+        } catch (error) {
+          console.error('Failed to fetch shift:', error);
+          setFetchError(error instanceof Error ? error.message : 'Failed to load shift');
+          // Fallback to the shift prop if fetch fails
+          setFetchedShift(shift);
+        }
+      };
+      
+      fetchShiftData();
+    } else if (isOpen && mode === 'new') {
+      // For new mode, reset everything
+      setFetchedShift(null);
+      setFetchError(null);
+      form.reset();
+      setExpenses([]);
+      setAttachments([]);
+    } else if (!isOpen) {
+      // Reset when modal closes
+      setFetchedShift(null);
+      setFetchError(null);
+    }
+  }, [isOpen, shift?.id, mode, getOne]);
+
+  // Reset form when fetched shift data changes
+  useEffect(() => {
+    // Use fetchedShift if available, otherwise fallback to shift prop
+    const shiftToUse = fetchedShift || shift;
+    
+    if (shiftToUse) {
+      const startDate = new Date(shiftToUse.startDate);
       const formData = {
-        summary: mode === 'duplicate' ? `${shift.summary} (Copy)` : shift.summary,
-        contact: shift.contact.fullName,
-        assignee: shift.assignee.name,
+        summary: mode === 'duplicate' ? `${shiftToUse.summary} (Copy)` : shiftToUse.summary,
+        contact: shiftToUse.contact?.fullName || shiftToUse.contact?.name || '',
+        assignee: shiftToUse.assignee?.fullName || shiftToUse.assignee?.name || '',
         startDate: startDate.toISOString().split('T')[0],
         startTime: startDate.toTimeString().slice(0, 5),
-        duration: Math.floor(shift.duration / 3600), // Convert seconds to hours
-        location: shift.location || '',
-        category: shift.category,
-        rate: shift.rate || '',
-        rateAmount: shift.rateAmountExclGst || 0,
-        comments: shift.comments || '',
-        notes: mode === 'duplicate' ? '' : (shift.notes || ''), // Clear notes for duplicate
-        isGstFree: shift.isGstFree || false,
-        recurrenceRule: mode === 'duplicate' ? '' : (shift.recurrenceRule || ''), // Clear recurrence for duplicate
+        duration: Math.floor(shiftToUse.duration / 3600), // Convert seconds to hours
+        location: shiftToUse.location || '',
+        category: shiftToUse.category,
+        rate: shiftToUse.rate || '',
+        rateAmount: shiftToUse.rateAmountExclGst || 0,
+        comments: shiftToUse.comments || '',
+        notes: mode === 'duplicate' ? '' : (shiftToUse.notes || ''), // Clear notes for duplicate
+        isGstFree: shiftToUse.isGstFree || false,
+        recurrenceRule: mode === 'duplicate' ? '' : (shiftToUse.recurrenceRule || ''), // Clear recurrence for duplicate
       };
       
       form.reset(formData);
@@ -136,15 +175,16 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
         setExpenses([]);
         setAttachments([]);
       } else {
-        setExpenses(shift.expenses || []);
-        setAttachments(shift.attachments || []);
+        setExpenses(shiftToUse.expenses || []);
+        setAttachments(shiftToUse.attachments || []);
       }
-    } else {
+    } else if (!isOpen || mode === 'new') {
+      // Reset form for new mode or when modal is closed
       form.reset();
       setExpenses([]);
       setAttachments([]);
     }
-  }, [shift, mode, form]);
+  }, [fetchedShift, shift, mode, form, isOpen]);
 
   const onSubmit = async (data: ShiftFormData) => {
     try {
@@ -174,8 +214,12 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
       if (mode === 'new') {
         const newShift = await createShift(shiftData as any);
         onSave?.(newShift);
-      } else if (mode === 'edit' && shift?.id) {
-        const updatedShift = await updateShift(shift.id, shiftData as any);
+      } else if (mode === 'edit' && (fetchedShift?.id || shift?.id)) {
+        const shiftId = fetchedShift?.id || shift?.id;
+        if (!shiftId) {
+          throw new Error('Shift ID is required for editing');
+        }
+        const updatedShift = await updateShift(shiftId, shiftData as any);
         onSave?.(updatedShift);
       } else if (mode === 'complete' && shift?.id) {
         const completedShift = await completeShift(shift.id, { isGstFree: data.isGstFree || false });
@@ -611,7 +655,8 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
     // Convert empty string to 'none' for display, and 'none' back to empty string for form
     const displayValue = currentValue === '' ? 'none' : currentValue;
     // Only disabled if the shift already has an ID (existing shift) - not on new or duplicate
-    const isExistingShift = !!(shift?.id && mode === 'edit');
+    const shiftToCheck = fetchedShift || shift;
+    const isExistingShift = !!(shiftToCheck?.id && mode === 'edit');
 
     return (
       <Select
@@ -633,89 +678,97 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
     );
   };
 
-  const renderViewMode = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Calendar className="h-8 w-8 text-blue-600" />
-          <div>
-            <h3 className="text-xl font-semibold">{shift?.summary}</h3>
-            <div className="flex items-center space-x-2">
-              <Badge className={`${getStatusColor(shift?.shiftStatus || ShiftStatus.Pending)} flex items-center gap-1`}>
-                {getStatusIcon(shift?.shiftStatus || ShiftStatus.Pending)}
-                {shift?.shiftStatus}
-              </Badge>
-              <Badge variant="outline">{shift?.category}</Badge>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h4 className="font-semibold mb-3">Shift Details</h4>
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <User className="h-4 w-4 text-gray-500" />
-              <span className="text-sm"><strong>Contact:</strong> {shift?.contact.fullName}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <User className="h-4 w-4 text-gray-500" />
-              <span className="text-sm"><strong>Assignee:</strong> {shift?.assignee.name}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-gray-500" />
-              <span className="text-sm">
-                <strong>Time:</strong> {formatDateTime(shift?.startDate || '').date} {formatDateTime(shift?.startDate || '').time}
-              </span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-gray-500" />
-              <span className="text-sm"><strong>Duration:</strong> {formatDuration(shift?.duration || 0)}</span>
-            </div>
-            {shift?.location && (
+  const renderViewMode = () => {
+    // Use fetchedShift if available, otherwise fallback to shift prop
+    const shiftToDisplay = fetchedShift || shift;
+    
+    if (!shiftToDisplay) {
+      return null;
+    }
+    
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Calendar className="h-8 w-8 text-blue-600" />
+            <div>
+              <h3 className="text-xl font-semibold">{shiftToDisplay.summary}</h3>
               <div className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4 text-gray-500" />
-                <span className="text-sm"><strong>Location:</strong> {shift.location}</span>
+                <Badge className={`${getStatusColor(shiftToDisplay.shiftStatus || ShiftStatus.Pending)} flex items-center gap-1`}>
+                  {getStatusIcon(shiftToDisplay.shiftStatus || ShiftStatus.Pending)}
+                  {shiftToDisplay.shiftStatus}
+                </Badge>
+                <Badge variant="outline">{shiftToDisplay.category}</Badge>
               </div>
-            )}
-            {shift?.recurrenceRule && (
-              <div className="flex items-center space-x-2">
-                <Repeat className="h-4 w-4 text-gray-500" />
-                <span className="text-sm"><strong>Recurrence:</strong> {getRecurrenceLabel(shift.recurrenceRule, shift.startDate)}</span>
-              </div>
-            )}
-            <div className="flex items-center space-x-2">
-              <DollarSign className="h-4 w-4 text-gray-500" />
-              <span className="text-sm"><strong>Rate:</strong> {shift?.rateName} - ${shift?.rateAmountExclGst.toFixed(2)} excl. GST</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <DollarSign className="h-4 w-4 text-gray-500" />
-              <span className="text-sm"><strong>Total:</strong> ${shift?.totalInclGst.toFixed(2)}</span>
             </div>
           </div>
         </div>
 
-        {(shift?.comments || shift?.notes) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h4 className="font-semibold mb-3">Comments & Notes</h4>
+            <h4 className="font-semibold mb-3">Shift Details</h4>
             <div className="space-y-2">
-              {shift?.comments && (
-                <div>
-                  <p className="text-sm"><strong>Comments:</strong></p>
-                  <p className="text-sm text-gray-600">{shift.comments}</p>
+              <div className="flex items-center space-x-2">
+                <User className="h-4 w-4 text-gray-500" />
+                <span className="text-sm"><strong>Contact:</strong> {shiftToDisplay.contact?.fullName || shiftToDisplay.contact?.name || 'N/A'}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <User className="h-4 w-4 text-gray-500" />
+                <span className="text-sm"><strong>Assignee:</strong> {shiftToDisplay.assignee?.fullName || shiftToDisplay.assignee?.name || 'N/A'}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-gray-500" />
+                <span className="text-sm">
+                  <strong>Time:</strong> {formatDateTime(shiftToDisplay.startDate || '').date} {formatDateTime(shiftToDisplay.startDate || '').time}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-gray-500" />
+                <span className="text-sm"><strong>Duration:</strong> {formatDuration(shiftToDisplay.duration || 0)}</span>
+              </div>
+              {shiftToDisplay.location && (
+                <div className="flex items-center space-x-2">
+                  <MapPin className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm"><strong>Location:</strong> {shiftToDisplay.location}</span>
                 </div>
               )}
-              {shift?.notes && (
-                <div>
-                  <p className="text-sm"><strong>Notes:</strong></p>
-                  <p className="text-sm text-gray-600">{shift.notes}</p>
+              {shiftToDisplay.recurrenceRule && (
+                <div className="flex items-center space-x-2">
+                  <Repeat className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm"><strong>Recurrence:</strong> {getRecurrenceLabel(shiftToDisplay.recurrenceRule, shiftToDisplay.startDate)}</span>
                 </div>
               )}
+              <div className="flex items-center space-x-2">
+                <DollarSign className="h-4 w-4 text-gray-500" />
+                <span className="text-sm"><strong>Rate:</strong> {shiftToDisplay.rateName || 'N/A'} - ${(shiftToDisplay.rateAmountExclGst || 0).toFixed(2)} excl. GST</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <DollarSign className="h-4 w-4 text-gray-500" />
+                <span className="text-sm"><strong>Total:</strong> ${(shiftToDisplay.totalInclGst || 0).toFixed(2)}</span>
+              </div>
             </div>
           </div>
-        )}
-      </div>
+
+          {(shiftToDisplay.comments || shiftToDisplay.notes) && (
+            <div>
+              <h4 className="font-semibold mb-3">Comments & Notes</h4>
+              <div className="space-y-2">
+                {shiftToDisplay.comments && (
+                  <div>
+                    <p className="text-sm"><strong>Comments:</strong></p>
+                    <p className="text-sm text-gray-600">{shiftToDisplay.comments}</p>
+                  </div>
+                )}
+                {shiftToDisplay.notes && (
+                  <div>
+                    <p className="text-sm"><strong>Notes:</strong></p>
+                    <p className="text-sm text-gray-600">{shiftToDisplay.notes}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
       {(expenses.length > 0 || attachments.length > 0) && (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -730,6 +783,9 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
     </div>
   );
 
+  // Determine which shift to use for display
+  const shiftToUse = fetchedShift || shift;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -743,40 +799,66 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          {isReadOnly ? (
-            renderViewMode()
-          ) : (
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList>
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
-                <TabsTrigger value="attachments">Attachments ({attachments.length})</TabsTrigger>
-              </TabsList>
-              <TabsContent value="details">{renderDetailsTab()}</TabsContent>
-              <TabsContent value="expenses">{renderExpensesTab()}</TabsContent>
-              <TabsContent value="attachments">{renderAttachmentsTab()}</TabsContent>
-            </Tabs>
-          )}
-
-          <DialogFooter className="flex justify-between">
-            <div className="flex space-x-2">
-              <Button type="button" variant="outline" onClick={onClose}>
-                {isReadOnly ? 'Close' : 'Cancel'}
-              </Button>
+        {/* Loading state */}
+        {isLoadingShift && (mode === 'edit' || mode === 'view' || mode === 'duplicate') && (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              <p className="text-gray-600">Loading shift details...</p>
             </div>
+          </div>
+        )}
 
-            <div className="flex space-x-2">
-              {!isReadOnly && (
-                <Button type="submit" disabled={isSaving || isCompleting}>
-                  {isSaving || isCompleting ? 'Saving...' : 
-                   mode === 'new' ? 'Create Shift' : 
-                   mode === 'complete' ? 'Complete Shift' : 'Save Changes'}
+        {/* Error state */}
+        {fetchError && !isLoadingShift && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              <div>
+                <p className="text-sm font-medium text-red-800">Failed to load shift</p>
+                <p className="text-sm text-red-600">{fetchError}</p>
+                <p className="text-xs text-red-500 mt-1">Using cached data if available.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isLoadingShift && (
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            {isReadOnly ? (
+              renderViewMode()
+            ) : (
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList>
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
+                  <TabsTrigger value="attachments">Attachments ({attachments.length})</TabsTrigger>
+                </TabsList>
+                <TabsContent value="details">{renderDetailsTab()}</TabsContent>
+                <TabsContent value="expenses">{renderExpensesTab()}</TabsContent>
+                <TabsContent value="attachments">{renderAttachmentsTab()}</TabsContent>
+              </Tabs>
+            )}
+
+            <DialogFooter className="flex justify-between">
+              <div className="flex space-x-2">
+                <Button type="button" variant="outline" onClick={onClose}>
+                  {isReadOnly ? 'Close' : 'Cancel'}
                 </Button>
-              )}
-            </div>
-          </DialogFooter>
-        </form>
+              </div>
+
+              <div className="flex space-x-2">
+                {!isReadOnly && (
+                  <Button type="submit" disabled={isSaving || isCompleting}>
+                    {isSaving || isCompleting ? 'Saving...' : 
+                     mode === 'new' ? 'Create Shift' : 
+                     mode === 'complete' ? 'Complete Shift' : 'Save Changes'}
+                  </Button>
+                )}
+              </div>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );
