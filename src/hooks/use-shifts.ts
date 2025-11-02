@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { shiftsApi, Shift, ShiftFilters, ShiftListResponse, ShiftStatus } from '@/lib/api/shifts-service';
+import { shiftsApi, Shift, ShiftFilters, ShiftListResponse, ShiftStatus, DeleteShiftType, NotifyItem } from '@/lib/api/shifts-service';
 
 export interface UseShiftsOptions {
   defaultFilters?: ShiftFilters;
   pageNumber?: number;
   pageSize?: number;
+  onLoad?: () => void;
 }
 
 export function useShifts(options: UseShiftsOptions = {}) {
@@ -15,6 +16,8 @@ export function useShifts(options: UseShiftsOptions = {}) {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Shift[]>([]);
   const [total, setTotal] = useState(0);
+  const [hasMoreBefore, setHasMoreBefore] = useState<string | undefined>();
+  const [hasMoreAfter, setHasMoreAfter] = useState<string | undefined>();
   const [pagination, setPagination] = useState({
     pageNumber: options.pageNumber || 1,
     pageSize: options.pageSize || 100,
@@ -29,8 +32,29 @@ export function useShifts(options: UseShiftsOptions = {}) {
   });
 
   const { isAuthenticated } = useAuth();
+  
+  // Use ref to store onLoad callback to avoid recreating loadShifts
+  const onLoadRef = useRef(options.onLoad);
+  useEffect(() => {
+    onLoadRef.current = options.onLoad;
+  }, [options.onLoad]);
+  
+  // Use ref to track if a fetch is in progress to prevent duplicate requests
+  const isFetchingRef = useRef(false);
+  // Use ref to track last fetch parameters to prevent unnecessary refetches
+  const lastFetchParamsRef = useRef<string>('');
 
   const loadShifts = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      setError(null);
+      setData([]);
+      setTotal(0);
+      setHasMoreBefore(undefined);
+      setHasMoreAfter(undefined);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -40,6 +64,13 @@ export function useShifts(options: UseShiftsOptions = {}) {
         pageNumber: pagination.pageNumber,
         pageSize: pagination.pageSize,
       };
+
+      // If neither before nor after is provided, default to after today
+      if (!filters.before && !filters.after) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        filters.after = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      }
 
       // Calculate filter counter
       const diffStatus = filter.status && filter.status !== ShiftStatus.All;
@@ -54,20 +85,194 @@ export function useShifts(options: UseShiftsOptions = {}) {
       const response = await shiftsApi.getAll(filters);
 
       setData(response.data);
-      setTotal(response.meta.total);
+      setHasMoreBefore(response.hasMoreBefore);
+      setHasMoreAfter(response.hasMoreAfter);
+      // Backend doesn't return total count, so use data length
+      // Note: This is the count for the current page/range, not total count
+      setTotal(response.data.length);
+
+      // Call onLoad callback if provided
+      onLoadRef.current?.();
     } catch (error) {
       console.error('Shifts fetch error:', error);
       setError(error instanceof Error ? error.message : 'Failed to load shifts');
       setData([]);
       setTotal(0);
+      setHasMoreBefore(undefined);
+      setHasMoreAfter(undefined);
     } finally {
       setLoading(false);
     }
-  }, [filter, pagination]);
+  }, [filter, pagination, isAuthenticated]);
+
+  const loadMoreBefore = useCallback(async (before: string) => {
+    if (!isAuthenticated) {
+      return;
+    }
+    setLoading(true);
+    setError(null);
+
+    try {
+      const filters: ShiftFilters = {
+        ...filter,
+        before,
+        after: undefined, // Clear after when loading before
+      };
+
+      const response = await shiftsApi.getAll(filters);
+      setData(prevData => [...response.data, ...prevData]);
+      setHasMoreBefore(response.hasMoreBefore);
+    } catch (error) {
+      console.error('Load more before error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load more shifts');
+    } finally {
+      setLoading(false);
+    }
+  }, [filter, isAuthenticated]);
+
+  const loadMoreAfter = useCallback(async (after: string) => {
+    if (!isAuthenticated) {
+      return;
+    }
+    setLoading(true);
+    setError(null);
+
+    try {
+      const filters: ShiftFilters = {
+        ...filter,
+        before: undefined, // Clear before when loading after
+        after,
+      };
+
+      const response = await shiftsApi.getAll(filters);
+      setData(prevData => [...prevData, ...response.data]);
+      setHasMoreAfter(response.hasMoreAfter);
+    } catch (error) {
+      console.error('Load more after error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load more shifts');
+    } finally {
+      setLoading(false);
+    }
+  }, [filter, isAuthenticated]);
 
   useEffect(() => {
-    loadShifts();
-  }, [loadShifts]);
+    if (!isAuthenticated) {
+      setLoading(false);
+      setError(null);
+      setData([]);
+      setTotal(0);
+      setHasMoreBefore(undefined);
+      setHasMoreAfter(undefined);
+      lastFetchParamsRef.current = '';
+      return;
+    }
+
+    // Create a stable key for the current fetch parameters
+    const fetchKey = JSON.stringify({
+      status: filter.status,
+      assignee: filter.assignee,
+      contact: filter.contact,
+      before: filter.before,
+      after: filter.after,
+      pageNumber: pagination.pageNumber,
+      pageSize: pagination.pageSize,
+    });
+
+    // Skip if this exact fetch was already initiated
+    if (lastFetchParamsRef.current === fetchKey) {
+      return;
+    }
+
+    // Prevent duplicate fetches that are in progress
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    let isCancelled = false;
+    isFetchingRef.current = true;
+    lastFetchParamsRef.current = fetchKey;
+
+    // Inline loadShifts logic to avoid dependency on the callback
+    const fetchShifts = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const filters: ShiftFilters = {
+          ...filter,
+          pageNumber: pagination.pageNumber,
+          pageSize: pagination.pageSize,
+        };
+
+        // If neither before nor after is provided, default to after today
+        if (!filters.before && !filters.after) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          filters.after = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        }
+
+        // Calculate filter counter
+        const diffStatus = filter.status && filter.status !== ShiftStatus.All;
+        const diffAssignee = filter.assignee && filter.assignee !== '-1';
+        const diffContact = filter.contact && filter.contact.length > 0;
+        const diffBefore = filter.before && filter.before.length > 0;
+        const diffAfter = filter.after && filter.after.length > 0;
+        
+        const counter = [diffStatus, diffAssignee, diffContact, diffBefore, diffAfter].filter(Boolean).length;
+        setFilterCounter(counter);
+
+        const response = await shiftsApi.getAll(filters);
+
+        // Check if this request was cancelled
+        if (isCancelled) {
+          return;
+        }
+
+        setData(response.data);
+        setHasMoreBefore(response.hasMoreBefore);
+        setHasMoreAfter(response.hasMoreAfter);
+        setTotal(response.data.length);
+
+        // Call onLoad callback if provided
+        onLoadRef.current?.();
+      } catch (error) {
+        // Don't set error if request was cancelled
+        if (isCancelled) {
+          return;
+        }
+        console.error('Shifts fetch error:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load shifts');
+        setData([]);
+        setTotal(0);
+        setHasMoreBefore(undefined);
+        setHasMoreAfter(undefined);
+      } finally {
+        isFetchingRef.current = false;
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchShifts();
+
+    // Cleanup: mark as cancelled if the effect runs again
+    return () => {
+      isCancelled = true;
+      isFetchingRef.current = false;
+    };
+    // Note: filter and pagination are objects, so we need to depend on their values
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    filter.status,
+    filter.assignee,
+    filter.contact,
+    filter.before,
+    filter.after,
+    pagination.pageNumber,
+    pagination.pageSize,
+    isAuthenticated,
+  ]);
 
   const updateFilter = useCallback((newFilter: Partial<ShiftFilters>) => {
     setFilter(prev => ({ ...prev, ...newFilter }));
@@ -86,13 +291,61 @@ export function useShifts(options: UseShiftsOptions = {}) {
     error,
     data,
     total,
+    hasMoreBefore,
+    hasMoreAfter,
     pagination,
     filterCounter,
     filter,
     setFilter: updateFilter,
     setPagination: updatePagination,
     reloadList,
+    loadMoreBefore,
+    loadMoreAfter,
   };
+}
+
+export function useShift() {
+  const [loading, setLoading] = useState(false);
+
+  const getOne = useCallback(async (id: string): Promise<Shift> => {
+    setLoading(true);
+    try {
+      return await shiftsApi.getOne(id);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { loading, getOne };
+}
+
+export function useRecipientsShift(shiftId?: string) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<NotifyItem[]>([]);
+
+  const load = useCallback(async () => {
+    if (!shiftId) return;
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const recipients = await shiftsApi.getRecipients(shiftId);
+      setData(recipients);
+    } catch (error) {
+      console.error('Get recipients error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load recipients');
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [shiftId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return { loading, error, data, reloadList: load };
 }
 
 export function useShiftActions() {
@@ -123,7 +376,7 @@ export function useShiftActions() {
     }
   };
 
-  const completeShift = async (id: string, data: { isGstFree: boolean }): Promise<Shift> => {
+  const completeShift = async (id: string, data: { isGstFree: boolean; notes?: string }): Promise<Shift> => {
     setIsCompleting(true);
     try {
       return await shiftsApi.complete(id, data);
@@ -141,7 +394,7 @@ export function useShiftActions() {
     }
   };
 
-  const deleteShift = async (id: string, type: 'single' | 'future' | 'all'): Promise<void> => {
+  const deleteShift = async (id: string, type: DeleteShiftType = DeleteShiftType.Single): Promise<void> => {
     setIsDeleting(true);
     try {
       await shiftsApi.delete(id, type);
@@ -159,10 +412,10 @@ export function useShiftActions() {
     }
   };
 
-  const notifyShift = async (id: string, data: { message: string; recipients: string[] }): Promise<void> => {
+  const notifyShift = async (id: string, recipients: NotifyItem[]): Promise<void> => {
     setIsNotifying(true);
     try {
-      await shiftsApi.notify(id, data);
+      await shiftsApi.notify(id, recipients);
     } finally {
       setIsNotifying(false);
     }

@@ -7,9 +7,9 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 export interface Shift {
   id: string;
   idAssignee: string;
-  assignee: {
+  assignee?: {
     id: string;
-    name: string;
+    fullName: string;
     initials: string;
     color: string;
   };
@@ -73,6 +73,17 @@ export interface Attachment {
   createdAt: string;
 }
 
+export interface NotifyItem {
+  name: string;
+  email: string;
+}
+
+export enum DeleteShiftType {
+  Single = 'single',
+  Future = 'future',
+  All = 'all',
+}
+
 export enum ShiftStatus {
   Pending = 'Pending',
   Cancelled = 'Cancelled',
@@ -114,13 +125,8 @@ export interface ShiftFilters {
 
 export interface ShiftListResponse {
   data: Shift[];
-  meta: {
-    total: number;
-    pageNumber: number;
-    pageSize: number;
-    hasMoreAfter?: boolean;
-    hasMoreBefore?: boolean;
-  };
+  hasMoreAfter?: string; // Date string indicating there are more shifts after this range
+  hasMoreBefore?: string; // Date string indicating there are more shifts before this range
 }
 
 // API service functions
@@ -134,17 +140,35 @@ export const shiftsApi = {
     if (filters.status && filters.status !== ShiftStatus.All) {
       params.append('status', filters.status);
     }
-    if (filters.assignee && filters.assignee !== '-1') {
-      params.append('assignee', filters.assignee);
-    }
-    if (filters.contact) {
+    // Backend requires assignee to always be present as a string
+    // Default to '-1' (all users) if not provided or invalid
+    const assigneeValue = (filters.assignee && typeof filters.assignee === 'string' && filters.assignee.trim() !== '') 
+      ? filters.assignee 
+      : '-1';
+    params.append('assignee', assigneeValue);
+    
+    // Only send contact if it's a valid non-empty string
+    if (filters.contact && typeof filters.contact === 'string' && filters.contact.trim() !== '') {
       params.append('contact', filters.contact);
     }
-    if (filters.before) {
+    
+    // Backend requires at least one of 'before' or 'after' to be provided
+    const hasBefore = filters.before && typeof filters.before === 'string' && filters.before.trim() !== '';
+    const hasAfter = filters.after && typeof filters.after === 'string' && filters.after.trim() !== '';
+    
+    if (hasBefore) {
       params.append('before', filters.before);
     }
-    if (filters.after) {
+    if (hasAfter) {
       params.append('after', filters.after);
+    }
+    
+    // If neither is provided, default to showing all future shifts (after today)
+    if (!hasBefore && !hasAfter) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      params.append('after', todayStr);
     }
     if (filters.pageNumber) {
       params.append('pageNumber', filters.pageNumber.toString());
@@ -161,13 +185,15 @@ export const shiftsApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch shifts');
+      const errorText = await response.text();
+      console.error('Shifts API error:', response.status, errorText);
+      throw new Error(`Failed to fetch shifts: ${response.status} ${errorText || response.statusText}`);
     }
 
     return response.json();
   },
 
-  async getById(id: string): Promise<Shift> {
+  async getOne(id: string): Promise<Shift> {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
@@ -179,10 +205,17 @@ export const shiftsApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch shift');
+      const errorText = await response.text();
+      console.error('Get shift API error:', response.status, errorText);
+      throw new Error(`Failed to fetch shift: ${response.status} ${errorText || response.statusText}`);
     }
 
     return response.json();
+  },
+
+  async getById(id: string): Promise<Shift> {
+    // Alias for backwards compatibility
+    return this.getOne(id);
   },
 
   async create(shift: Omit<Shift, 'id' | 'createdAt' | 'updatedAt'>): Promise<Shift> {
@@ -225,12 +258,12 @@ export const shiftsApi = {
     return response.json();
   },
 
-  async complete(id: string, data: { isGstFree: boolean }): Promise<Shift> {
+  async complete(id: string, data: { isGstFree: boolean; notes?: string }): Promise<Shift> {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
     const response = await fetch(`${API_BASE_URL}/shifts/${id}/complete`, {
-      method: 'POST',
+      method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -239,7 +272,9 @@ export const shiftsApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to complete shift');
+      const errorText = await response.text();
+      console.error('Complete shift API error:', response.status, errorText);
+      throw new Error(`Failed to complete shift: ${response.status} ${errorText || response.statusText}`);
     }
 
     return response.json();
@@ -250,7 +285,7 @@ export const shiftsApi = {
     if (!token) throw new Error('No authentication token');
 
     const response = await fetch(`${API_BASE_URL}/shifts/${id}/cancel`, {
-      method: 'POST',
+      method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -259,27 +294,33 @@ export const shiftsApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to cancel shift');
+      const errorText = await response.text();
+      console.error('Cancel shift API error:', response.status, errorText);
+      throw new Error(`Failed to cancel shift: ${response.status} ${errorText || response.statusText}`);
     }
 
     return response.json();
   },
 
-  async delete(id: string, type: 'single' | 'future' | 'all'): Promise<void> {
+  async delete(id: string, type: DeleteShiftType = DeleteShiftType.Single): Promise<void> {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${API_BASE_URL}/shifts/${id}`, {
+    const params = new URLSearchParams();
+    params.append('type', type);
+
+    const response = await fetch(`${API_BASE_URL}/shifts/${id}?${params}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ type }),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to delete shift');
+      const errorText = await response.text();
+      console.error('Delete shift API error:', response.status, errorText);
+      throw new Error(`Failed to delete shift: ${response.status} ${errorText || response.statusText}`);
     }
   },
 
@@ -287,8 +328,8 @@ export const shiftsApi = {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${API_BASE_URL}/shifts/${id}/amend`, {
-      method: 'POST',
+    const response = await fetch(`${API_BASE_URL}/shifts/${id}/ammend`, {
+      method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -296,13 +337,35 @@ export const shiftsApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to amend shift');
+      const errorText = await response.text();
+      console.error('Amend shift API error:', response.status, errorText);
+      throw new Error(`Failed to amend shift: ${response.status} ${errorText || response.statusText}`);
     }
 
     return response.json();
   },
 
-  async notify(id: string, data: { message: string; recipients: string[] }): Promise<void> {
+  async getRecipients(id: string): Promise<NotifyItem[]> {
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
+
+    const response = await fetch(`${API_BASE_URL}/shifts/${id}/recipients`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Get recipients API error:', response.status, errorText);
+      throw new Error(`Failed to get recipients: ${response.status} ${errorText || response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  async notify(id: string, recipients: NotifyItem[]): Promise<void> {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
@@ -312,11 +375,13 @@ export const shiftsApi = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ recipients }),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to notify shift');
+      const errorText = await response.text();
+      console.error('Notify shift API error:', response.status, errorText);
+      throw new Error(`Failed to notify shift: ${response.status} ${errorText || response.statusText}`);
     }
   },
 };
