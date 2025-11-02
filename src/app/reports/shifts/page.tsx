@@ -90,7 +90,7 @@ export default function ShiftsReportPage() {
   };
 
   return (
-    <MainLayout headerConfig={headerConfig}>
+    <MainLayout activeNavItem="reports" headerConfig={headerConfig}>
       <div className="space-y-6">
         {/* Report Form */}
         <div className="bg-white p-6 rounded-lg shadow-sm border">

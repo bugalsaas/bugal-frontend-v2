@@ -68,7 +68,7 @@ export default function IncidentsReportPage() {
   };
 
   return (
-    <MainLayout headerConfig={headerConfig}>
+    <MainLayout activeNavItem="reports" headerConfig={headerConfig}>
       <div className="space-y-6">
         {/* Info Alert */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

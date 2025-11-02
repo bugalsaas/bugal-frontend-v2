@@ -113,7 +113,7 @@ export default function RatesPage() {
   };
 
   return (
-    <MainLayout headerConfig={headerConfig}>
+    <MainLayout activeNavItem="rates" headerConfig={headerConfig}>
       <div className="space-y-6">
         <RatesList
           onViewRate={handleViewRate}

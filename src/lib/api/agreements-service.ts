@@ -29,9 +29,14 @@ export interface AgreementSupportItem {
   NDISName: string;
   NDISNumber: string;
   description: string;
-  amountExclGst: number;
+  amountExclGst: string;
   frequency: Frequency[];
   location?: string;
+}
+
+export interface NotifyItem {
+  name: string;
+  email: string;
 }
 
 export interface Agreement {
@@ -73,6 +78,24 @@ export interface Agreement {
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AgreementCreateDto {
+  idContact: string;
+  startDate: string;
+  endDate: string;
+  reviewDate: string;
+  amendmentDays: number;
+  sendInvoicesAfter?: number;
+  supportItems: AgreementSupportItem[];
+  userResponsibilities: string[];
+  contactResponsibilities: string[];
+  canChargeCancellation?: boolean;
+  idAttachments?: string[];
+}
+
+export interface AgreementUpdateDto extends AgreementCreateDto {
+  id: string;
 }
 
 export interface AgreementFilters {
@@ -142,7 +165,7 @@ export const agreementsApi = {
     return response.json();
   },
 
-  async create(agreement: Omit<Agreement, 'id' | 'createdAt' | 'updatedAt' | 'code' | 'user'>): Promise<Agreement> {
+  async create(agreement: AgreementCreateDto): Promise<Agreement> {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
@@ -155,12 +178,14 @@ export const agreementsApi = {
       body: JSON.stringify(agreement),
     });
     if (!response.ok) {
-      throw new Error('Failed to create agreement');
+      const errorText = await response.text();
+      console.error('Agreement create error:', response.status, errorText);
+      throw new Error(`Failed to create agreement: ${response.status} ${errorText || response.statusText}`);
     }
     return response.json();
   },
 
-  async update(id: string, agreement: Partial<Agreement>): Promise<Agreement> {
+  async update(id: string, agreement: AgreementUpdateDto): Promise<Agreement> {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
@@ -170,10 +195,12 @@ export const agreementsApi = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(agreement),
+      body: JSON.stringify({ ...agreement, id }),
     });
     if (!response.ok) {
-      throw new Error('Failed to update agreement');
+      const errorText = await response.text();
+      console.error('Agreement update error:', response.status, errorText);
+      throw new Error(`Failed to update agreement: ${response.status} ${errorText || response.statusText}`);
     }
     return response.json();
   },
@@ -194,19 +221,39 @@ export const agreementsApi = {
     }
   },
 
-  async complete(id: string): Promise<Agreement> {
+  async getRecipients(id: string): Promise<NotifyItem[]> {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${API_BASE_URL}/agreements/${id}/complete`, {
-      method: 'POST',
+    const response = await fetch(`${API_BASE_URL}/agreements/${id}/recipients`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
     if (!response.ok) {
-      throw new Error('Failed to complete agreement');
+      const errorText = await response.text();
+      console.error('Get recipients error:', response.status, errorText);
+      throw new Error(`Failed to get recipients: ${response.status} ${errorText || response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async complete(id: string): Promise<Agreement> {
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
+
+    const response = await fetch(`${API_BASE_URL}/agreements/${id}/complete`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Complete agreement error:', response.status, errorText);
+      throw new Error(`Failed to complete agreement: ${response.status} ${errorText || response.statusText}`);
     }
     return response.json();
   },
@@ -215,20 +262,22 @@ export const agreementsApi = {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${API_BASE_URL}/agreements/${id}/draft`, {
-      method: 'POST',
+    const response = await fetch(`${API_BASE_URL}/agreements/${id}/undo`, {
+      method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
     if (!response.ok) {
-      throw new Error('Failed to revert agreement to draft');
+      const errorText = await response.text();
+      console.error('Revert to draft error:', response.status, errorText);
+      throw new Error(`Failed to revert agreement to draft: ${response.status} ${errorText || response.statusText}`);
     }
     return response.json();
   },
 
-  async notify(id: string, recipients: string[]): Promise<void> {
+  async notify(id: string, recipients: NotifyItem[]): Promise<void> {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
@@ -241,7 +290,9 @@ export const agreementsApi = {
       body: JSON.stringify({ recipients }),
     });
     if (!response.ok) {
-      throw new Error('Failed to notify agreement');
+      const errorText = await response.text();
+      console.error('Notify agreement error:', response.status, errorText);
+      throw new Error(`Failed to notify agreement: ${response.status} ${errorText || response.statusText}`);
     }
   },
 };

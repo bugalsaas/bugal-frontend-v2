@@ -549,7 +549,7 @@ export default function StaffPage() {
   // Check if user has organization access
   if (!organizationId) {
     return (
-      <MainLayout headerConfig={headerConfig}>
+      <MainLayout activeNavItem="organizations" headerConfig={headerConfig}>
         <div className="text-center py-12">
           <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No Organization Found</h3>
@@ -561,7 +561,7 @@ export default function StaffPage() {
 
   if (isLoading) {
     return (
-      <MainLayout headerConfig={headerConfig}>
+      <MainLayout activeNavItem="organizations" headerConfig={headerConfig}>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
           <span className="ml-2 text-gray-600">Loading staff...</span>
@@ -572,7 +572,7 @@ export default function StaffPage() {
 
   if (error) {
     return (
-      <MainLayout headerConfig={headerConfig}>
+      <MainLayout activeNavItem="organizations" headerConfig={headerConfig}>
         <div className="text-center py-12">
           <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Staff</h3>

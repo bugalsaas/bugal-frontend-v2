@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { agreementsApi, Agreement, AgreementFilters, AgreementListResponse, AgreementStatus } from '@/lib/api/agreements-service';
+import { agreementsApi, Agreement, AgreementFilters, AgreementListResponse, AgreementStatus, NotifyItem, AgreementCreateDto } from '@/lib/api/agreements-service';
 
 export interface UseAgreementsOptions {
   defaultFilters?: AgreementFilters;
@@ -101,7 +101,7 @@ export function useAgreementActions() {
   const [isNotifying, setIsNotifying] = useState(false);
   const [selectedAgreement, setSelectedAgreement] = useState<Agreement | null>(null);
 
-  const createAgreement = async (agreement: Omit<Agreement, 'id' | 'createdAt' | 'updatedAt' | 'code' | 'user'>): Promise<Agreement> => {
+  const createAgreement = async (agreement: AgreementCreateDto): Promise<Agreement> => {
     setIsSaving(true);
     try {
       return await agreementsApi.create(agreement);
@@ -110,10 +110,10 @@ export function useAgreementActions() {
     }
   };
 
-  const updateAgreement = async (id: string, agreement: Partial<Agreement>): Promise<Agreement> => {
+  const updateAgreement = async (id: string, agreement: AgreementCreateDto): Promise<Agreement> => {
     setIsSaving(true);
     try {
-      return await agreementsApi.update(id, agreement);
+      return await agreementsApi.update(id, { ...agreement, id });
     } finally {
       setIsSaving(false);
     }
@@ -146,7 +146,7 @@ export function useAgreementActions() {
     }
   };
 
-  const notifyAgreement = async (id: string, recipients: string[]): Promise<void> => {
+  const notifyAgreement = async (id: string, recipients: NotifyItem[]): Promise<void> => {
     setIsNotifying(true);
     try {
       await agreementsApi.notify(id, recipients);

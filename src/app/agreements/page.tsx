@@ -1,18 +1,28 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/wrapped-main-layout';
 import { AgreementsList } from '@/components/pages/agreements-list';
-import { useAgreementActions } from '@/hooks/use-agreements';
-import { Agreement } from '@/lib/api/agreements-service';
+import { AgreementModal } from '@/components/modals/agreement-modal';
+import { CompleteAgreementModal } from '@/components/modals/complete-agreement-modal';
+import { NotifyAgreementModal } from '@/components/modals/notify-agreement-modal';
+import { useAgreementActions, useAgreements } from '@/hooks/use-agreements';
+import { Agreement, AgreementStatus } from '@/lib/api/agreements-service';
+import { useContacts } from '@/hooks/use-contacts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText } from 'lucide-react';
 
 export default function AgreementsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'new' | 'edit' | 'view'>('new');
   const [selectedAgreement, setSelectedAgreement] = useState<Agreement | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<AgreementStatus>(AgreementStatus.All);
+  const [contactFilter, setContactFilter] = useState<string>('');
 
+  const { setFilters, data: agreements, loading, error, total, reloadList } = useAgreements();
+  const { data: contacts } = useContacts({ pageSize: 100 });
   const { 
     createAgreement, 
     updateAgreement, 
@@ -25,6 +35,14 @@ export default function AgreementsPage() {
     isCompleting,
     isNotifying,
   } = useAgreementActions();
+
+  // Update filter when status or contact changes
+  useEffect(() => {
+    setFilters({ 
+      status: statusFilter !== AgreementStatus.All ? statusFilter : undefined,
+      idContact: contactFilter && contactFilter !== '-1' ? contactFilter : undefined,
+    });
+  }, [statusFilter, contactFilter, setFilters]);
 
   const handleAddAgreement = () => {
     setSelectedAgreement(null);
@@ -52,20 +70,21 @@ export default function AgreementsPage() {
 
   const handleCompleteAgreement = (agreement: Agreement) => {
     setSelectedAgreement(agreement);
-    setModalMode('view');
-    setIsModalOpen(true);
+    setIsCompleteModalOpen(true);
   };
 
-  const handleDraftAgreement = (agreement: Agreement) => {
-    setSelectedAgreement(agreement);
-    setModalMode('view');
-    setIsModalOpen(true);
+  const handleDraftAgreement = async (agreement: Agreement) => {
+    try {
+      await draftAgreement(agreement.id);
+      reloadList();
+    } catch (error) {
+      console.error('Failed to revert agreement to draft:', error);
+    }
   };
 
   const handleNotifyAgreement = (agreement: Agreement) => {
     setSelectedAgreement(agreement);
-    setModalMode('view');
-    setIsModalOpen(true);
+    setIsNotifyModalOpen(true);
   };
 
   const handleDuplicateAgreement = (agreement: Agreement) => {
@@ -74,78 +93,49 @@ export default function AgreementsPage() {
     setIsModalOpen(true);
   };
 
-  const handleSaveAgreement = async (agreementData: Omit<Agreement, 'id' | 'createdAt' | 'updatedAt' | 'code' | 'user'>) => {
-    setIsLoading(true);
+  const handleSaveAgreement = async (agreement: Agreement) => {
     try {
-      if (modalMode === 'new') {
-        await createAgreement(agreementData);
-      } else if (modalMode === 'edit' && selectedAgreement) {
-        await updateAgreement(selectedAgreement.id, agreementData);
-      }
+      reloadList();
+      setIsModalOpen(false);
+      setSelectedAgreement(null);
     } catch (error) {
       console.error('Failed to save agreement:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedAgreement) return;
-    
-    setIsLoading(true);
+  const handleDelete = async (agreementId: string) => {
     try {
-      await deleteAgreement(selectedAgreement.id);
+      await deleteAgreement(agreementId);
+      reloadList();
       setIsModalOpen(false);
       setSelectedAgreement(null);
     } catch (error) {
       console.error('Failed to delete agreement:', error);
-    } finally {
-      setIsLoading(false);
+      throw error;
     }
   };
 
   const handleComplete = async () => {
     if (!selectedAgreement) return;
-    
-    setIsLoading(true);
     try {
       await completeAgreement(selectedAgreement.id);
-      setIsModalOpen(false);
+      reloadList();
+      setIsCompleteModalOpen(false);
       setSelectedAgreement(null);
     } catch (error) {
       console.error('Failed to complete agreement:', error);
-    } finally {
-      setIsLoading(false);
+      throw error;
     }
   };
 
-  const handleDraft = async () => {
+  const handleNotify = async () => {
     if (!selectedAgreement) return;
-    
-    setIsLoading(true);
     try {
-      await draftAgreement(selectedAgreement.id);
-      setIsModalOpen(false);
-      setSelectedAgreement(null);
-    } catch (error) {
-      console.error('Failed to revert agreement to draft:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleNotify = async (recipients: string[]) => {
-    if (!selectedAgreement) return;
-    
-    setIsLoading(true);
-    try {
-      await notifyAgreement(selectedAgreement.id, recipients);
-      setIsModalOpen(false);
+      reloadList();
+      setIsNotifyModalOpen(false);
       setSelectedAgreement(null);
     } catch (error) {
       console.error('Failed to notify agreement:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -160,12 +150,49 @@ export default function AgreementsPage() {
     icon: FileText,
     showAddButton: true,
     onAddClick: handleAddAgreement,
+    customFilterComponent: (
+      <div className="flex flex-col sm:flex-row gap-3 w-full">
+        <Select
+          value={statusFilter}
+          onValueChange={(value) => setStatusFilter(value as AgreementStatus)}
+        >
+          <SelectTrigger className="w-full sm:w-auto sm:min-w-[180px]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={AgreementStatus.All}>All</SelectItem>
+            <SelectItem value={AgreementStatus.Draft}>Draft</SelectItem>
+            <SelectItem value={AgreementStatus.Completed}>Completed</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={contactFilter || '-1'}
+          onValueChange={(value) => setContactFilter(value)}
+        >
+          <SelectTrigger className="w-full sm:w-auto sm:min-w-[180px]">
+            <SelectValue placeholder="Filter by contact" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="-1">All Contacts</SelectItem>
+            {contacts.map((contact) => (
+              <SelectItem key={contact.id} value={contact.id}>
+                {contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || contact.organisationName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    ),
   };
 
   return (
-    <MainLayout headerConfig={headerConfig}>
+    <MainLayout activeNavItem="agreements" headerConfig={headerConfig}>
       <div className="space-y-6">
         <AgreementsList
+          agreements={agreements}
+          loading={loading}
+          error={error}
+          total={total}
           onViewAgreement={handleViewAgreement}
           onEditAgreement={handleEditAgreement}
           onDeleteAgreement={handleDeleteAgreement}
@@ -176,19 +203,37 @@ export default function AgreementsPage() {
         />
       </div>
 
-      {/* TODO: Add Agreement Modal Components */}
-      {/* <AgreementModal
+      <AgreementModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         mode={modalMode}
-        agreement={selectedAgreement}
+        agreement={selectedAgreement || undefined}
         onSave={handleSaveAgreement}
+        onEdit={handleEditAgreement}
         onDelete={modalMode === 'view' ? handleDelete : undefined}
-        onComplete={modalMode === 'view' ? handleComplete : undefined}
-        onDraft={modalMode === 'view' ? handleDraft : undefined}
-        onNotify={modalMode === 'view' ? handleNotify : undefined}
-        isLoading={isLoading || isSaving || isDeleting || isCompleting || isNotifying}
-      /> */}
+      />
+
+      <CompleteAgreementModal
+        isOpen={isCompleteModalOpen}
+        onClose={() => {
+          setIsCompleteModalOpen(false);
+          setSelectedAgreement(null);
+        }}
+        agreement={selectedAgreement}
+        onComplete={handleComplete}
+        isLoading={isCompleting}
+      />
+
+      <NotifyAgreementModal
+        isOpen={isNotifyModalOpen}
+        onClose={() => {
+          setIsNotifyModalOpen(false);
+          setSelectedAgreement(null);
+        }}
+        agreement={selectedAgreement}
+        onNotify={handleNotify}
+        isLoading={isNotifying}
+      />
     </MainLayout>
   );
 }

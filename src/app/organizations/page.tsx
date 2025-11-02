@@ -101,7 +101,7 @@ export default function OrganizationsPage() {
   };
 
   return (
-    <MainLayout headerConfig={headerConfig}>
+    <MainLayout activeNavItem="organizations" headerConfig={headerConfig}>
       <div className="space-y-6">
         <OrganizationsList
           onViewOrganization={handleViewOrganization}

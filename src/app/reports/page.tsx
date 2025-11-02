@@ -65,7 +65,7 @@ export default function ReportsPage() {
   ];
 
   return (
-    <MainLayout headerConfig={headerConfig}>
+    <MainLayout activeNavItem="reports" headerConfig={headerConfig}>
       <div className="space-y-6">
         {/* Introduction */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">

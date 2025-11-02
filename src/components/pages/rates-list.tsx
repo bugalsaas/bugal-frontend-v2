@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -165,15 +166,49 @@ export function RatesList({
         </div>
       )}
 
-      {/* Rates Table (responsive) */}
-      <div className="overflow-x-auto bg-white border border-gray-200 rounded-lg">
+      {/* Mobile Card View */}
+      <div className="block md:hidden space-y-3">
+        {rates.map((rate) => (
+          <Card
+            key={rate.id}
+            className="p-4 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => handleViewRate(rate)}
+          >
+            <div className="space-y-3">
+              {/* Type */}
+              <div className="flex items-center gap-2">
+                {getRateTypeIcon(rate.rateType)}
+                <Badge className={getRateTypeColor(rate.rateType)}>{rate.rateType}</Badge>
+                {rate.isArchived && (
+                  <Badge variant="outline" className="text-gray-500">Archived</Badge>
+                )}
+              </div>
+
+              {/* Name */}
+              <div>
+                <div className="font-medium text-gray-900">{rate.name}</div>
+                {rate.description && (
+                  <div className="text-sm text-gray-500 mt-1">{rate.description}</div>
+                )}
+              </div>
+
+              {/* Amount */}
+              <div className="text-sm font-semibold text-gray-900">
+                {formatCurrency(rate.amountExclGst)}
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Rates Table (Desktop) */}
+      <div className="hidden md:block overflow-x-auto bg-white border border-gray-200 rounded-lg">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount (excl. GST)</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total (incl. GST)</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -196,7 +231,6 @@ export function RatesList({
                   )}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">{formatCurrency(rate.amountExclGst)}</td>
-                <td className="px-4 py-3 whitespace-nowrap">{formatCurrency(rate.amountInclGst)}</td>
                 <td className="px-4 py-3 whitespace-nowrap text-right">
                   <div className="inline-flex items-center gap-1">
                     <Button variant="ghost" size="sm" onClick={() => handleViewRate(rate)}>

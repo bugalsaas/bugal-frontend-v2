@@ -163,7 +163,7 @@ export default function OrganizationSettingsPage() {
   // Show loading state while fetching organization
   if (orgLoading) {
     return (
-      <MainLayout headerConfig={headerConfig}>
+      <MainLayout activeNavItem="organizations" headerConfig={headerConfig}>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
         </div>
@@ -174,7 +174,7 @@ export default function OrganizationSettingsPage() {
   // Show error state if organization failed to load
   if (orgError || !currentOrganization) {
     return (
-      <MainLayout headerConfig={headerConfig}>
+      <MainLayout activeNavItem="organizations" headerConfig={headerConfig}>
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
             <div className="flex items-center space-x-2 text-red-800">
