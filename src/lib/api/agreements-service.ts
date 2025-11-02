@@ -103,7 +103,10 @@ export const agreementsApi = {
     const params = new URLSearchParams();
     if (filters.search) params.append('search', filters.search);
     if (filters.idContact) params.append('idContact', filters.idContact);
-    if (filters.status) params.append('status', filters.status);
+    // Only send status if it's not "All" - backend only accepts "Draft" or "Completed"
+    if (filters.status && filters.status !== AgreementStatus.All) {
+      params.append('status', filters.status);
+    }
     if (filters.startDate) params.append('startDate', filters.startDate);
     if (filters.endDate) params.append('endDate', filters.endDate);
     if (filters.pageNumber) params.append('pageNumber', filters.pageNumber.toString());
@@ -116,7 +119,9 @@ export const agreementsApi = {
       },
     });
     if (!response.ok) {
-      throw new Error('Failed to fetch agreements');
+      const errorText = await response.text();
+      console.error('Agreements API error:', response.status, errorText);
+      throw new Error(`Failed to fetch agreements: ${response.status} ${errorText || response.statusText}`);
     }
     return response.json();
   },
