@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useShifts, useShiftActions } from '@/hooks/use-shifts';
 import { Shift, ShiftStatus, ShiftCategory } from '@/lib/api/shifts-service';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,7 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
   const router = useRouter();
   const { user } = useAuth();
   const organizationTimezone = user?.organization?.timezone;
+  const todayDateRef = useRef<HTMLDivElement>(null);
 
   const {
     data: shifts,
@@ -70,6 +71,29 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
   const { data: contacts } = useContacts({ pageSize: 100 });
 
   const { deleteShift, selectShift } = useShiftActions();
+
+  // Get today's date number for the calendar icon
+  const getTodayDateNumber = () => {
+    const todayStr = getTodayInTimezone(organizationTimezone);
+    const today = new Date(todayStr + 'T00:00:00');
+    return today.getDate();
+  };
+
+  // Scroll to today's date - centered on the page
+  const scrollToToday = () => {
+    if (todayDateRef.current) {
+      todayDateRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center',
+        inline: 'nearest'
+      });
+      // Highlight briefly
+      todayDateRef.current.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+      setTimeout(() => {
+        todayDateRef.current?.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+      }, 2000);
+    }
+  };
 
   const handleDeleteShift = async (shiftId: string) => {
     if (confirm('Are you sure you want to delete this shift?')) {
@@ -115,66 +139,61 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
     <div className="space-y-6">
       {/* Sticky Header with Filters and New Button */}
       <div className="sticky top-[76px] z-30 bg-white border-b border-gray-200 shadow-sm py-4 mb-6 -mx-6 px-6">
-        <div className="space-y-4">
-          {/* Top Row: Filters */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4">
-            <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Status Filter */}
-              <div className="w-full">
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Status</label>
-                <Select
-                  value={filter.status || ShiftStatus.All}
-                  onValueChange={(value) => setFilter({ status: value as ShiftStatus })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All statuses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ShiftStatus.All}>All statuses</SelectItem>
-                    <SelectItem value={ShiftStatus.Pending}>Pending</SelectItem>
-                    <SelectItem value={ShiftStatus.Completed}>Completed</SelectItem>
-                    <SelectItem value={ShiftStatus.Cancelled}>Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          {/* Filters Row */}
+          <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Status Filter */}
+            <div className="w-full">
+              <Select
+                value={filter.status || ShiftStatus.All}
+                onValueChange={(value) => setFilter({ status: value as ShiftStatus })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ShiftStatus.All}>All statuses</SelectItem>
+                  <SelectItem value={ShiftStatus.Pending}>Pending</SelectItem>
+                  <SelectItem value={ShiftStatus.Completed}>Completed</SelectItem>
+                  <SelectItem value={ShiftStatus.Cancelled}>Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-              {/* Assignee Filter */}
-              <div className="w-full">
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Assignee</label>
-                <UserSelector
-                  value={filter.assignee || '-1'}
-                  onValueChange={(value) => setFilter({ assignee: value })}
-                  className="w-full"
-                />
-              </div>
+            {/* Assignee Filter */}
+            <div className="w-full">
+              <UserSelector
+                value={filter.assignee || '-1'}
+                onValueChange={(value) => setFilter({ assignee: value })}
+                className="w-full"
+              />
+            </div>
 
-              {/* Contact Filter */}
-              <div className="w-full">
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Contact</label>
-                <Select
-                  value={filter.contact || 'all'}
-                  onValueChange={(value) => setFilter({ contact: value === 'all' ? '' : value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All contacts" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All contacts</SelectItem>
-                    {contacts?.map((contact) => (
-                      <SelectItem key={contact.id} value={contact.id}>
-                        {contact.firstName && contact.lastName
-                          ? `${contact.firstName} ${contact.lastName}`
-                          : contact.organisationName || contact.email || 'Unknown'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Contact Filter */}
+            <div className="w-full">
+              <Select
+                value={filter.contact || 'all'}
+                onValueChange={(value) => setFilter({ contact: value === 'all' ? '' : value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All contacts" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All contacts</SelectItem>
+                  {contacts?.map((contact) => (
+                    <SelectItem key={contact.id} value={contact.id}>
+                      {contact.firstName && contact.lastName
+                        ? `${contact.firstName} ${contact.lastName}`
+                        : contact.organisationName || contact.email || 'Unknown'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {/* Bottom Row: Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          {/* Action Buttons Row */}
+          <div className="flex items-center gap-3 flex-shrink-0">
             {filterCounter > 0 && (
               <Button
                 variant="outline"
@@ -193,13 +212,26 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
               </Button>
             )}
             
+            {/* Today Button with Calendar Icon */}
+            <Button
+              variant="outline"
+              onClick={scrollToToday}
+              className="relative p-1.5 h-10 w-10 flex flex-col items-center justify-center hover:bg-blue-50 hover:border-blue-300 group"
+              title="Jump to today"
+            >
+              {/* Calendar Icon Outline */}
+              <Calendar className="h-5 w-5 text-gray-600 group-hover:text-blue-600 absolute inset-0 m-auto" />
+              {/* Date Number Overlay */}
+              <span className="relative z-10 text-xs font-bold text-gray-800 group-hover:text-blue-700 mt-0.5">
+                {getTodayDateNumber()}
+              </span>
+            </Button>
+            
             {/* New Shift Button */}
-            <div className={`${filterCounter > 0 ? 'sm:ml-auto' : 'sm:ml-auto'} w-full sm:w-auto`}>
-              <Button onClick={onAddShift} className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-2" />
-                New Shift
-              </Button>
-            </div>
+            <Button onClick={onAddShift} className="whitespace-nowrap">
+              <Plus className="h-4 w-4 mr-2" />
+              New Shift
+            </Button>
           </div>
         </div>
       </div>
@@ -252,9 +284,10 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
             const dateHeader = formatDateHeader(dateKey, organizationTimezone);
             const [firstShift, ...restShifts] = dateShifts;
             const hasNoShifts = dateShifts.length === 0;
+            const isToday = dateHeader.isToday;
 
             return (
-              <div key={dateKey} className="space-y-2">
+              <div key={dateKey} className="space-y-2" ref={isToday ? todayDateRef : null}>
                 {/* Date Header with First Shift or Empty State */}
                 <div className="flex gap-4 items-start">
                   {/* Date Header */}
