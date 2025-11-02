@@ -212,7 +212,7 @@ export function AgreementsList({
                   <div className="text-xs text-gray-500">
                     {agreement.supportItems.slice(0, 2).map((item, index) => (
                       <div key={index} className="truncate">
-                        {item.NDISName} - ${item.amountExclGst.toFixed(2)}
+                        {item.NDISName} - ${Number(item.amountExclGst || 0).toFixed(2)}
                       </div>
                     ))}
                     {agreement.supportItems.length > 2 && (
