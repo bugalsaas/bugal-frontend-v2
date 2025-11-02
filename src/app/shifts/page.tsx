@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MainLayout } from '@/components/layout/main-layout';
+import { MainLayout } from '@/components/layout/wrapped-main-layout';
 import { ShiftsList } from '@/components/pages/shifts-list';
 import { ShiftModal } from '@/components/modals/shift-modal';
 import { Shift } from '@/lib/api/shifts-service';
@@ -57,8 +57,6 @@ export default function ShiftsPage() {
     <MainLayout 
       activeNavItem="shifts"
       headerConfig={headerConfig}
-      notifications={5}
-      user={{ name: "User", initials: "U" }}
     >
           <ShiftsList 
             onAddShift={handleAddShift}

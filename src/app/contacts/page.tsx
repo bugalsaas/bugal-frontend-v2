@@ -1,19 +1,30 @@
 'use client';
 
-import { useState } from 'react';
-import { MainLayout } from '@/components/layout/main-layout';
+import { useState, useEffect } from 'react';
+import { MainLayout } from '@/components/layout/wrapped-main-layout';
 import { ContactsList } from '@/components/pages/contacts-list';
 import { ContactModal } from '@/components/modals/contact-modal';
-import { Contact } from '@/lib/api/contacts-service';
-import { useContactActions } from '@/hooks/use-contacts';
+import { Contact, ContactType } from '@/lib/api/contacts-service';
+import { useContactActions, useContacts } from '@/hooks/use-contacts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function ContactsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'new' | 'edit' | 'view'>('new');
   const [selectedContact, setSelectedContact] = useState<Contact | undefined>();
   const [searchValue, setSearchValue] = useState('');
+  const [contactTypeFilter, setContactTypeFilter] = useState<ContactType>(ContactType.All);
 
   const { deleteContact } = useContactActions();
+  const { setFilter, data: contacts, loading, error, total, reloadList } = useContacts();
+
+  // Update filter when contact type or search changes
+  useEffect(() => {
+    setFilter({ 
+      type: contactTypeFilter, 
+      search: searchValue || '' 
+    });
+  }, [contactTypeFilter, searchValue, setFilter]);
 
   const handleAddContact = () => {
     // Clear any previous contact data and set to new mode
@@ -62,20 +73,38 @@ export default function ContactsPage() {
     searchPlaceholder: "Search contacts...",
     onSearchChange: handleSearchChange,
     onAddClick: handleAddContact,
+    customFilterComponent: (
+      <Select
+        value={contactTypeFilter}
+        onValueChange={(value) => setContactTypeFilter(value as ContactType)}
+      >
+        <SelectTrigger className="w-full sm:w-auto sm:min-w-[180px]">
+          <SelectValue placeholder="Filter by type" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ContactType.All}>All</SelectItem>
+          <SelectItem value={ContactType.Client}>Client</SelectItem>
+          <SelectItem value={ContactType.Organisation}>Organisation</SelectItem>
+        </SelectContent>
+      </Select>
+    ),
   };
 
   return (
     <MainLayout 
       activeNavItem="contacts"
       headerConfig={headerConfig}
-      notifications={5}
-      user={{ name: "User", initials: "U" }}
     >
+
       <ContactsList 
+        contacts={contacts}
+        loading={loading}
+        error={error}
+        total={total}
+        reloadList={reloadList}
         onAddContact={handleAddContact}
         onEditContact={handleEditContact}
         onViewContact={handleViewContact}
-        searchValue={searchValue}
       />
       
       <ContactModal

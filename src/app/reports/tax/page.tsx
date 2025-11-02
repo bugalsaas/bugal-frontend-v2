@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { MainLayout } from '@/components/layout/main-layout';
+import { MainLayout } from '@/components/layout/wrapped-main-layout';
 import { Button } from '@/components/ui/button';
 import { DateRangeInput } from '@/components/reports/date-range-input';
 import { ReportSummary, ReportSummaryItem } from '@/components/reports/report-summary';

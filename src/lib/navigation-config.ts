@@ -112,6 +112,7 @@ export interface PageHeaderConfig {
   onSearchChange?: (value: string) => void;
   onFilterClick?: () => void;
   searchPlaceholder?: string;
+  customFilterComponent?: React.ReactNode; // Custom filter component to render in header row
 }
 
 export interface MainLayoutProps {

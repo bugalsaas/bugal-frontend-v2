@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MainLayout } from '@/components/layout/main-layout';
+import { MainLayout } from '@/components/layout/wrapped-main-layout';
 import { InvoicesList } from '@/components/pages/invoices-list';
 import { InvoiceModal } from '@/components/modals/invoice-modal';
 import { PaymentModal } from '@/components/modals/payment-modal';
@@ -81,8 +81,6 @@ export default function InvoicesPage() {
     <MainLayout 
       activeNavItem="invoices"
       headerConfig={headerConfig}
-      notifications={5}
-      user={{ name: "User", initials: "U" }}
     >
       <InvoicesList 
         onAddInvoice={handleAddInvoice}

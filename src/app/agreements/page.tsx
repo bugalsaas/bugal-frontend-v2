@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { MainLayout } from '@/components/layout/main-layout';
+import { MainLayout } from '@/components/layout/wrapped-main-layout';
 import { AgreementsList } from '@/components/pages/agreements-list';
 import { useAgreementActions } from '@/hooks/use-agreements';
 import { Agreement } from '@/lib/api/agreements-service';

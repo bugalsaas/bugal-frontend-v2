@@ -1,6 +1,6 @@
 'use client';
 
-import { MainLayout } from '@/components/layout/main-layout';
+import { MainLayout } from '@/components/layout/wrapped-main-layout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

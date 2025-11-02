@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useContacts, useContactActions } from '@/hooks/use-contacts';
+import { useContactActions } from '@/hooks/use-contacts';
 import { ContactType, ContactStatus, Contact } from '@/lib/api/contacts-service';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,30 +21,27 @@ import {
 import { useRouter } from 'next/navigation';
 
 interface ContactsListProps {
+  contacts: Contact[];
+  loading: boolean;
+  error: string | null;
+  total: number;
+  reloadList: () => void;
   onAddContact: () => void;
   onEditContact: (contact: Contact) => void;
   onViewContact: (contact: Contact) => void;
-  searchValue?: string;
 }
 
-export function ContactsList({ onAddContact, onEditContact, onViewContact, searchValue }: ContactsListProps) {
+export function ContactsList({ 
+  contacts,
+  loading,
+  error,
+  total,
+  reloadList,
+  onAddContact, 
+  onEditContact, 
+  onViewContact 
+}: ContactsListProps) {
   const router = useRouter();
-
-  const {
-    data: contacts,
-    loading,
-    error,
-    total,
-    reloadList,
-    setFilter,
-  } = useContacts();
-
-  // Update filter when searchValue prop changes
-  React.useEffect(() => {
-    if (searchValue !== undefined) {
-      setFilter({ search: searchValue });
-    }
-  }, [searchValue, setFilter]);
 
   const { deleteContact, selectContact } = useContactActions();
 

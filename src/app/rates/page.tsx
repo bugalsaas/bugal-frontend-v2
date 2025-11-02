@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { MainLayout } from '@/components/layout/main-layout';
+import { MainLayout } from '@/components/layout/wrapped-main-layout';
 import { RatesList } from '@/components/pages/rates-list';
 import { RateModal } from '@/components/modals/rate-modal';
 import { useRateActions } from '@/hooks/use-rates';

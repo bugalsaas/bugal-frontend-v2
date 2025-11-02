@@ -267,30 +267,35 @@ export function MainLayout({
           <main className="flex-1 p-6">
             <div className="space-y-6">
               {/* Search and Actions */}
-              {(headerConfig.showSearch || headerConfig.showFilters || headerConfig.showAddButton) && (
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 max-w-md">
+              {(headerConfig.showSearch || headerConfig.showFilters || headerConfig.showAddButton || headerConfig.customFilterComponent) && (
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:items-center flex-1 sm:max-w-md">
                     {headerConfig.showSearch && (
-                      <div className="relative">
+                      <div className="relative flex-1 sm:flex-initial">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
                           placeholder={headerConfig.searchPlaceholder || "Search..."}
-                          className="pl-10"
+                          className="pl-10 w-full"
                           value={searchTerm}
                           onChange={handleSearchChange}
                         />
                       </div>
                     )}
+                    {headerConfig.customFilterComponent && (
+                      <div className="w-full sm:w-auto">
+                        {headerConfig.customFilterComponent}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-3 flex-shrink-0">
                     {headerConfig.showFilters && (
                       <Button variant="outline" className="flex items-center space-x-2" onClick={handleFilterClick}>
                         <Filter className="h-4 w-4" />
-                        <span>Filters</span>
+                        <span className="hidden sm:inline">Filters</span>
                       </Button>
                     )}
                     {headerConfig.showAddButton && (
-                      <Button onClick={handleAddClick} className="flex items-center space-x-2">
+                      <Button onClick={handleAddClick} className="flex items-center space-x-2 w-full sm:w-auto">
                         <Plus className="h-4 w-4" />
                         <span>{headerConfig.addButtonText || "Add"}</span>
                       </Button>
@@ -345,7 +350,7 @@ export function MainLayout({
         <main className="flex-1 p-4 pb-20">
           <div className="space-y-4">
             {/* Mobile Search and Actions */}
-            {(headerConfig.showSearch || headerConfig.showFilters || headerConfig.showAddButton) && (
+            {(headerConfig.showSearch || headerConfig.showFilters || headerConfig.showAddButton || headerConfig.customFilterComponent) && (
               <div className="space-y-3">
                 {headerConfig.showSearch && (
                   <div className="relative">
@@ -358,6 +363,11 @@ export function MainLayout({
                     />
                   </div>
                 )}
+                {headerConfig.customFilterComponent && (
+                  <div className="w-full">
+                    {headerConfig.customFilterComponent}
+                  </div>
+                )}
                 <div className="flex items-center space-x-2">
                   {headerConfig.showFilters && (
                     <Button variant="outline" size="sm" className="flex-1" onClick={handleFilterClick}>
@@ -366,7 +376,7 @@ export function MainLayout({
                     </Button>
                   )}
                   {headerConfig.showAddButton && (
-                    <Button size="sm" onClick={handleAddClick}>
+                    <Button size="sm" className="flex-1" onClick={handleAddClick}>
                       <Plus className="h-4 w-4 mr-2" />
                       {headerConfig.addButtonText || "Add"}
                     </Button>

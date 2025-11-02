@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MainLayout } from '@/components/layout/main-layout';
+import { MainLayout } from '@/components/layout/wrapped-main-layout';
 import { ExpensesList } from '@/components/pages/expenses-list';
 import { ExpenseModal } from '@/components/modals/expense-modal';
 import { Expense } from '@/lib/api/expenses-service';
