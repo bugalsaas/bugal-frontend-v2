@@ -1,314 +1,284 @@
 'use client';
 
-import { useState } from 'react';
-import { useExpenses, useExpenseActions } from '@/hooks/use-expenses';
-import { Expense, ExpenseType, getExpenseCategoryText } from '@/lib/api/expenses-service';
+import { Expense, ExpenseType } from '@/lib/api/expenses-service';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/contexts/auth-context';
 import {
   Receipt,
   DollarSign,
   Calendar,
-  User,
   Eye,
   Edit,
   Trash2,
   AlertCircle,
-  CheckCircle,
-  Clock,
-  Plus,
   Loader2,
-  FileText,
+  Wallet,
   Car,
-  Building,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 interface ExpensesListProps {
-  onAddExpense: () => void;
+  expenses?: Expense[];
+  loading?: boolean;
+  error?: string | null;
+  total?: number;
   onEditExpense: (expense: Expense) => void;
   onViewExpense: (expense: Expense) => void;
+  onDeleteExpense?: (expenseId: string) => void;
 }
 
-export function ExpensesList({ onAddExpense, onEditExpense, onViewExpense }: ExpensesListProps) {
-  const router = useRouter();
+export function ExpensesList({ 
+  expenses = [],
+  loading = false,
+  error = null,
+  total = 0,
+  onEditExpense, 
+  onViewExpense,
+  onDeleteExpense,
+}: ExpensesListProps) {
+  const { user } = useAuth();
 
-  const {
-    expenses,
-    isLoading,
-    error,
-    total,
-    filterCounter,
-    filters,
-    setFilters,
-    reloadList,
-  } = useExpenses();
+  // Check permissions
+  const hasPermissionUpdate = user?.scopes?.includes('expenses:update') ?? false;
+  const hasPermissionDelete = user?.scopes?.includes('expenses:delete') ?? false;
 
-  const { deleteExpense, selectExpense } = useExpenseActions();
-
-  const handleDeleteExpense = async (expenseId: string) => {
-    if (confirm('Are you sure you want to delete this expense?')) {
-      try {
-        await deleteExpense(expenseId);
-        reloadList(); // Refresh the list after deletion
-      } catch (error) {
-        console.error('Failed to delete expense:', error);
-      }
+  const handleDeleteExpense = (expenseId: string) => {
+    if (onDeleteExpense) {
+      onDeleteExpense(expenseId);
     }
   };
 
-  const handleViewExpense = (expense: Expense) => {
-    onViewExpense(expense);
-  };
-
-  const handleEditExpense = (expense: Expense) => {
-    onEditExpense(expense);
-  };
-
-  const getExpenseTypeColor = (type: ExpenseType) => {
-    switch (type) {
-      case ExpenseType.Business:
-        return 'bg-blue-100 text-blue-800';
-      case ExpenseType.Reclaimable:
-        return 'bg-green-100 text-green-800';
-      case ExpenseType.Kilometre:
-        return 'bg-purple-100 text-purple-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getExpenseTypeIcon = (type: ExpenseType) => {
-    switch (type) {
-      case ExpenseType.Business:
-        return <Building className="h-3 w-3" />;
-      case ExpenseType.Reclaimable:
-        return <Receipt className="h-3 w-3" />;
-      case ExpenseType.Kilometre:
-        return <Car className="h-3 w-3" />;
-      default:
-        return <Receipt className="h-3 w-3" />;
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | undefined) => {
+    if (amount === undefined || amount === null) return '$0.00';
     return new Intl.NumberFormat('en-AU', {
       style: 'currency',
       currency: 'AUD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-AU');
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-AU', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const getExpenseTypeIcon = (type: ExpenseType) => {
+    if (type === ExpenseType.Reclaimable) {
+      return <Receipt className="h-4 w-4 inline mr-1" />;
+    } else if (type === ExpenseType.Kilometre) {
+      return <Car className="h-4 w-4 inline mr-1" />;
+    } else {
+      return <Wallet className="h-4 w-4 inline mr-1" />;
+    }
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="text-center py-12">
-        <Loader2 className="h-12 w-12 text-blue-500 animate-spin mx-auto mb-4" />
-        <p className="text-gray-600">Loading expenses...</p>
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <span className="ml-2 text-gray-600">Loading expenses...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-12 text-red-600">
-        <AlertCircle className="h-12 w-12 mx-auto mb-4" />
-        <p>Error: {error}</p>
-        <Button onClick={reloadList} className="mt-4">Retry</Button>
+      <div className="text-center py-12">
+        <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Expenses</h3>
+        <p className="text-gray-600">{error}</p>
+      </div>
+    );
+  }
+
+  if (!expenses || expenses.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Receipt className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          No expenses found
+        </h3>
+        <p className="text-gray-600">
+          Get started by adding your first expense
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Select
-            value={filters.type || 'all'}
-            onValueChange={(value) => setFilters({ type: value === 'all' ? undefined : (value as ExpenseType) })}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value={ExpenseType.Business}>Business</SelectItem>
-              <SelectItem value={ExpenseType.Reclaimable}>Reclaimable</SelectItem>
-              <SelectItem value={ExpenseType.Kilometre}>Kilometre</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          {filterCounter > 0 && (
-            <Button variant="ghost" onClick={() => setFilters({ type: undefined, contact: '', from: undefined, to: undefined })}>
-              Clear Filters ({filterCounter})
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Results Summary */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600">
-          {total} expense{total !== 1 ? 's' : ''} found
-        </p>
-      </div>
-
-      {/* Expenses List */}
-      <div className="space-y-3">
-        {expenses?.map((expense) => (
-          <Card key={expense.id} className="p-4 hover:shadow-md transition-shadow">
-            <div className="grid grid-cols-12 gap-2 md:gap-4 items-center">
-              {/* Expense Info Column (3 cols) */}
-              <div className="col-span-6 md:col-span-3">
-                <div className="flex items-center gap-2 md:gap-3 mb-2">
-                  <Receipt className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
-                  <h3 className="text-base md:text-lg font-semibold text-gray-900">
-                    {expense.description}
-                  </h3>
-                </div>
-                <Badge className={`${getExpenseTypeColor(expense.expenseType)} flex items-center gap-1 text-xs w-fit`}>
-                  {getExpenseTypeIcon(expense.expenseType)}
-                  {expense.expenseType}
-                </Badge>
-                {expense.category && (
-                  <div className="mt-1">
-                    <Badge variant="outline" className="text-xs">
-                      {getExpenseCategoryText(expense.idCategory || '')}
-                    </Badge>
+    <div className="space-y-4">
+      {/* Desktop Table */}
+      <div className="hidden xl:block overflow-x-auto bg-white border border-gray-200 rounded-lg">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Type
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Date
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Amount
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Amount (GST)
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Payee
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Contact
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {expenses.map((expense) => (
+              <tr
+                key={expense.id}
+                className="hover:bg-gray-50 cursor-pointer"
+                onClick={() => onViewExpense(expense)}
+              >
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    {expense.icon || getExpenseTypeIcon(expense.expenseType)}
+                    <span className="text-sm text-gray-900">{expense.expenseType}</span>
                   </div>
-                )}
-              </div>
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <div className="flex items-center text-sm text-gray-900">
+                    <Calendar className="h-4 w-4 mr-1.5 text-gray-400" />
+                    {formatDate(expense.date)}
+                  </div>
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
+                  {formatCurrency(expense.amountInclGst)}
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                  {formatCurrency(expense.amountGst)}
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {expense.payee}
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {expense.contact?.fullName || '-'}
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onViewExpense(expense)}
+                      title="View expense"
+                      className="h-8 w-8 p-0"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    {!expense.idInvoice && hasPermissionUpdate && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEditExpense(expense)}
+                        title="Edit expense"
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {!expense.idInvoice && hasPermissionDelete && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteExpense(expense.id)}
+                        title="Delete expense"
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-              {/* Payee Column (2 cols) */}
-              <div className="col-span-6 md:col-span-2">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <User className="h-4 w-4" />
-                  <span className="truncate">{expense.payee}</span>
-                </div>
+      {/* Mobile/Tablet Card View */}
+      <div className="xl:hidden space-y-3">
+        {expenses.map((expense) => (
+          <div
+            key={expense.id}
+            className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => onViewExpense(expense)}
+          >
+            {/* Header Row */}
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center">
+                {expense.icon || getExpenseTypeIcon(expense.expenseType)}
+                <span className="text-sm font-semibold text-gray-900">{expense.expenseType}</span>
               </div>
-
-              {/* Date Column (2 cols) */}
-              <div className="col-span-6 md:col-span-2">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Calendar className="h-4 w-4" />
-                  <span>{formatDate(expense.date)}</span>
-                </div>
-              </div>
-
-              {/* Amount Column (2 cols) */}
-              <div className="col-span-6 md:col-span-2">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <DollarSign className="h-4 w-4" />
-                  <span className="font-medium">{formatCurrency(expense.amountInclGst)}</span>
-                </div>
-              </div>
-
-              {/* Attachments Column (2 cols) */}
-              <div className="col-span-6 md:col-span-2">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <FileText className="h-4 w-4" />
-                  <span>{expense.attachments?.length || 0} file{(expense.attachments?.length || 0) !== 1 ? 's' : ''}</span>
-                </div>
-              </div>
-
-              {/* Actions Column (1 col) */}
-              <div className="col-span-12 md:col-span-1">
-                <div className="flex items-center gap-1 justify-end">
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onViewExpense(expense)}
+                  title="View expense"
+                  className="h-8 w-8 p-0"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                {!expense.idInvoice && hasPermissionUpdate && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleViewExpense(expense)}
-                    title="View expense"
+                    onClick={() => onEditExpense(expense)}
+                    title="Edit expense"
                     className="h-8 w-8 p-0"
                   >
-                    <Eye className="h-4 w-4" />
+                    <Edit className="h-4 w-4" />
                   </Button>
-                  {!expense.idInvoice && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditExpense(expense)}
-                      title="Edit expense"
-                      className="h-8 w-8 p-0"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {!expense.idInvoice && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteExpense(expense.id)}
-                      title="Delete expense"
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                )}
+                {!expense.idInvoice && hasPermissionDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteExpense(expense.id)}
+                    title="Delete expense"
+                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
 
-            {/* Additional Details */}
-            {(expense.contact || expense.kms || expense.attachments?.length) && (
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                  {expense.contact && (
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      <span>Contact: {expense.contact.fullName}</span>
-                    </div>
-                  )}
-                  {expense.kms && (
-                    <div className="flex items-center gap-2">
-                      <Car className="h-4 w-4" />
-                      <span>{expense.kms} km @ {formatCurrency(expense.kmRateAmountExclGst || 0)}/km</span>
-                    </div>
-                  )}
-                  {expense.attachments && expense.attachments.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      <span>
-                        {expense.attachments.map(att => att.fileName).join(', ')}
-                      </span>
-                    </div>
-                  )}
-                </div>
+            {/* Details */}
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center text-gray-600">
+                <span className="font-medium mr-2">Payee:</span>
+                <span>{expense.payee}</span>
               </div>
-            )}
-          </Card>
+              <div className="flex items-center text-gray-600">
+                <Calendar className="h-4 w-4 mr-1.5 text-gray-400" />
+                <span>{formatDate(expense.date)}</span>
+              </div>
+              <div className="flex items-center text-gray-900 font-medium">
+                <DollarSign className="h-4 w-4 mr-1.5 text-gray-400" />
+                <span>{formatCurrency(expense.amountInclGst)}</span>
+              </div>
+            </div>
+          </div>
         ))}
       </div>
-
-      {/* Empty State */}
-      {expenses?.length === 0 && (
-        <div className="text-center py-12">
-          <Receipt className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            No expenses found
-          </h3>
-          <p className="text-gray-600 mb-6">
-            Get started by adding your first expense
-          </p>
-          <Button onClick={onAddExpense} className="flex items-center mx-auto">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Expense
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

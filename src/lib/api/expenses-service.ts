@@ -50,6 +50,8 @@ export enum ExpenseType {
   Business = 'Business',
   Reclaimable = 'Reclaimable',
   Kilometre = 'Kilometre',
+  // Not persistent - used for filtering only
+  All = 'All types',
 }
 
 export enum BusinessExpenseType {
@@ -102,20 +104,20 @@ export interface ExpenseListResponse {
 
 export const expensesApi = {
   async getAll(filters: ExpenseFilters = {}): Promise<ExpenseListResponse> {
-    // Always use real API
-
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
     const params = new URLSearchParams();
     
+    // Only include filters that have values
+    // Don't send "All" type or "-1" contact to API
     if (filters.action) {
       params.append('action', filters.action);
     }
-    if (filters.type) {
+    if (filters.type && filters.type !== 'All types') {
       params.append('type', filters.type);
     }
-    if (filters.contact) {
+    if (filters.contact && filters.contact !== '-1' && filters.contact !== '') {
       params.append('contact', filters.contact);
     }
     if (filters.from) {
@@ -139,10 +141,28 @@ export const expensesApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch expenses');
+      const errorText = await response.text();
+      console.error('Expenses fetch error:', response.status, errorText);
+      throw new Error(`Failed to fetch expenses: ${response.status} ${errorText || response.statusText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    
+    // Handle response format from backend (@Paginated decorator returns { data, meta })
+    // If backend returns array directly, transform it
+    if (Array.isArray(data)) {
+      return {
+        data,
+        meta: {
+          total: data.length,
+          pageNumber: filters.pageNumber || 1,
+          pageSize: filters.pageSize || 100,
+        },
+      };
+    }
+    
+    // Backend should return { data, meta } format
+    return data;
   },
 
   async getById(id: string): Promise<Expense> {
@@ -167,17 +187,53 @@ export const expensesApi = {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
+    // Prepare payload matching backend DTOs
+    // Backend validates based on expenseType and expects specific fields
+    const payload: any = {
+      expenseType: expense.expenseType,
+      date: expense.date,
+      description: expense.description,
+      idAttachments: expense.attachments?.map(a => a.id) || [],
+    };
+
+    // Add type-specific fields
+    if (expense.expenseType === ExpenseType.Business) {
+      payload.payee = expense.payee;
+      payload.amountInclGst = expense.amountInclGst;
+      payload.amountGst = expense.amountGst;
+      payload.idCategory = expense.idCategory;
+      payload.businessExpenseType = expense.businessExpenseType;
+    } else if (expense.expenseType === ExpenseType.Reclaimable) {
+      payload.payee = expense.payee;
+      payload.amountInclGst = expense.amountInclGst;
+      payload.amountGst = expense.amountGst;
+      payload.idContact = expense.idContact;
+      if (expense.idShift) {
+        payload.idShift = expense.idShift;
+      }
+    } else if (expense.expenseType === ExpenseType.Kilometre) {
+      payload.idContact = expense.idContact;
+      payload.kmRateAmountExclGst = expense.kmRateAmountExclGst;
+      payload.kms = expense.kms;
+      payload.isGstFree = expense.isGstFree ?? false;
+      if (expense.idShift) {
+        payload.idShift = expense.idShift;
+      }
+    }
+
     const response = await fetch(`${API_BASE_URL}/expenses`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(expense),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to create expense');
+      const errorText = await response.text();
+      console.error('Expense create error:', response.status, errorText);
+      throw new Error(`Failed to create expense: ${response.status} ${errorText || response.statusText}`);
     }
 
     return response.json();
@@ -187,17 +243,52 @@ export const expensesApi = {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
+    // Prepare payload matching backend DTOs
+    const payload: any = {
+      expenseType: expense.expenseType,
+      date: expense.date,
+      description: expense.description,
+      idAttachments: expense.attachments?.map(a => a.id) || [],
+    };
+
+    // Add type-specific fields
+    if (expense.expenseType === ExpenseType.Business) {
+      payload.payee = expense.payee;
+      payload.amountInclGst = expense.amountInclGst;
+      payload.amountGst = expense.amountGst;
+      payload.idCategory = expense.idCategory;
+      payload.businessExpenseType = expense.businessExpenseType;
+    } else if (expense.expenseType === ExpenseType.Reclaimable) {
+      payload.payee = expense.payee;
+      payload.amountInclGst = expense.amountInclGst;
+      payload.amountGst = expense.amountGst;
+      payload.idContact = expense.idContact;
+      if (expense.idShift) {
+        payload.idShift = expense.idShift;
+      }
+    } else if (expense.expenseType === ExpenseType.Kilometre) {
+      payload.idContact = expense.idContact;
+      payload.kmRateAmountExclGst = expense.kmRateAmountExclGst;
+      payload.kms = expense.kms;
+      payload.isGstFree = expense.isGstFree ?? false;
+      if (expense.idShift) {
+        payload.idShift = expense.idShift;
+      }
+    }
+
     const response = await fetch(`${API_BASE_URL}/expenses/${id}`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(expense),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to update expense');
+      const errorText = await response.text();
+      console.error('Expense update error:', response.status, errorText);
+      throw new Error(`Failed to update expense: ${response.status} ${errorText || response.statusText}`);
     }
 
     return response.json();
