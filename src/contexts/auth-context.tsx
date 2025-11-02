@@ -18,6 +18,7 @@ export interface User {
     id: string;
     name: string;
     type: string;
+    timezone?: string;
   };
   scopes?: string[]; // Organization permissions/scopes
 }
@@ -306,7 +307,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (email && typeof email === 'string') return email[0]?.toUpperCase() || 'U';
               return 'U';
             };
-            const meResp = meResponse as { scopes?: string[]; organization?: { id: string; name: string; organizationType?: string; type?: string }; organizations?: Array<{ id: string; name: string }> };
+            const meResp = meResponse as { 
+              scopes?: string[]; 
+              organization?: { 
+                id: string; 
+                name: string; 
+                organizationType?: string; 
+                type?: string;
+                timezone?: string;
+              }; 
+              organizations?: Array<{ id: string; name: string }> 
+            };
             const freshUser: User = {
               ...ud as User,
               firstName: ud.firstName as string | undefined,
@@ -320,6 +331,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     id: meResp.organization.id,
                     name: meResp.organization.name,
                     type: meResp.organization.organizationType || meResp.organization.type || '',
+                    timezone: meResp.organization.timezone,
                   }
                 : undefined,
             };
@@ -421,7 +433,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (email && typeof email === 'string') return email[0]?.toUpperCase() || 'U';
         return 'U';
       };
-      const meResp = meResponse as { scopes?: string[]; organization?: { id: string; name: string; organizationType?: string; type?: string }; organizations?: Array<{ id: string; name: string }> };
+      const meResp = meResponse as { 
+        scopes?: string[]; 
+        organization?: { 
+          id: string; 
+          name: string; 
+          organizationType?: string; 
+          type?: string;
+          timezone?: string;
+        }; 
+        organizations?: Array<{ id: string; name: string }> 
+      };
       const user: User = {
         ...ud as User,
         firstName: ud.firstName as string | undefined,
@@ -435,6 +457,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               id: meResp.organization.id,
               name: meResp.organization.name,
               type: meResp.organization.organizationType || meResp.organization.type || '',
+              timezone: meResp.organization.timezone,
             }
           : undefined,
       };
@@ -597,7 +620,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (email && typeof email === 'string') return email[0]?.toUpperCase() || 'U';
         return 'U';
       };
-      const meResp = meResponse as { scopes?: string[]; organization?: { id: string; name: string; organizationType?: string; type?: string }; organizations?: Array<{ id: string; name: string }> };
+      const meResp = meResponse as { 
+        scopes?: string[]; 
+        organization?: { 
+          id: string; 
+          name: string; 
+          organizationType?: string; 
+          type?: string;
+          timezone?: string;
+        }; 
+        organizations?: Array<{ id: string; name: string }> 
+      };
       const user: User = {
         ...ud as User,
         firstName: ud.firstName as string | undefined,
@@ -611,6 +644,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               id: meResp.organization.id,
               name: meResp.organization.name,
               type: meResp.organization.organizationType || meResp.organization.type || '',
+              timezone: meResp.organization.timezone,
             }
           : undefined,
       };

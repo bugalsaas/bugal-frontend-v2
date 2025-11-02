@@ -65,24 +65,55 @@ export function formatShiftDateTime(dateString: string): {
   };
 }
 
-export function formatDateHeader(dateString: string): {
+/**
+ * Get today's date string (YYYY-MM-DD) in a specific timezone
+ * @param timezone - IANA timezone string (e.g., 'Australia/Sydney')
+ * @returns Date string in YYYY-MM-DD format for today in the specified timezone
+ */
+export function getTodayInTimezone(timezone?: string): string {
+  const now = new Date();
+  
+  if (!timezone) {
+    // Fallback to browser's local timezone
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    return today.toISOString().split('T')[0];
+  }
+  
+  // Get the current date string in the specified timezone (YYYY-MM-DD)
+  // en-CA locale gives YYYY-MM-DD format
+  return now.toLocaleDateString('en-CA', { timeZone: timezone });
+}
+
+export function formatDateHeader(dateString: string, timezone?: string): {
   dayOfWeek: string;
   dayOfMonth: string;
   month: string;
   isToday: boolean;
 } {
   const date = new Date(dateString);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const compareDate = new Date(date);
-  compareDate.setHours(0, 0, 0, 0);
+  const todayStr = getTodayInTimezone(timezone);
   
-  const isToday = compareDate.getTime() === today.getTime();
+  // Get the date string for the given date in the specified timezone
+  const dateStr = timezone
+    ? date.toLocaleDateString('en-CA', { timeZone: timezone })
+    : date.toISOString().split('T')[0];
+  
+  const isToday = dateStr === todayStr;
+  
+  // Format the date display using the timezone if provided
+  const baseOptions: Intl.DateTimeFormatOptions = timezone
+    ? { timeZone: timezone }
+    : {};
+  
+  const dayOfWeek = date.toLocaleDateString('en-AU', { ...baseOptions, weekday: 'short' });
+  const dayOfMonth = date.toLocaleDateString('en-AU', { ...baseOptions, day: 'numeric' });
+  const month = date.toLocaleDateString('en-AU', { ...baseOptions, month: 'short' });
   
   return {
-    dayOfWeek: date.toLocaleDateString('en-AU', { weekday: 'short' }),
-    dayOfMonth: date.getDate().toString(),
-    month: date.toLocaleDateString('en-AU', { month: 'short' }),
+    dayOfWeek,
+    dayOfMonth,
+    month,
     isToday,
   };
 }
