@@ -301,6 +301,22 @@ export function InvoiceModal({ isOpen, onClose, mode, invoice, onSave }: Invoice
     return new Date(dateString).toLocaleDateString('en-AU');
   };
 
+  // Helper function to determine if an invoice is overdue
+  const getEffectiveStatus = (invoice: Invoice): InvoiceStatus => {
+    // If invoice status is Unpaid and due date has passed, it's Overdue
+    if (invoice.invoiceStatus === InvoiceStatus.Unpaid) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dueDate = new Date(invoice.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      
+      if (dueDate < today && invoice.outstandingInclGst > 0) {
+        return InvoiceStatus.Overdue;
+      }
+    }
+    return invoice.invoiceStatus;
+  };
+
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-AU', {
       day: '2-digit',
@@ -621,9 +637,9 @@ export function InvoiceModal({ isOpen, onClose, mode, invoice, onSave }: Invoice
             <div>
               <h3 className="text-xl font-semibold">{invoiceToDisplay.code}</h3>
               <div className="flex items-center space-x-2">
-                <Badge className={`${getStatusColor(invoiceToDisplay.invoiceStatus)} flex items-center gap-1`}>
-                  {getStatusIcon(invoiceToDisplay.invoiceStatus)}
-                  {invoiceToDisplay.invoiceStatus}
+                <Badge className={`${getStatusColor(getEffectiveStatus(invoiceToDisplay))} flex items-center gap-1`}>
+                  {getStatusIcon(getEffectiveStatus(invoiceToDisplay))}
+                  {getEffectiveStatus(invoiceToDisplay)}
                 </Badge>
               </div>
             </div>

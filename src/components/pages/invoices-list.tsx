@@ -133,6 +133,22 @@ export function InvoicesList({
     return new Date(dateString).toLocaleDateString('en-AU');
   };
 
+  // Helper function to determine if an invoice is overdue
+  const getEffectiveStatus = (invoice: Invoice): InvoiceStatus => {
+    // If invoice status is Unpaid and due date has passed, it's Overdue
+    if (invoice.invoiceStatus === InvoiceStatus.Unpaid) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dueDate = new Date(invoice.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      
+      if (dueDate < today && invoice.outstandingInclGst > 0) {
+        return InvoiceStatus.Overdue;
+      }
+    }
+    return invoice.invoiceStatus;
+  };
+
   if (loading) {
     return (
       <div className="text-center py-12">
@@ -197,9 +213,9 @@ export function InvoicesList({
                   <FileText className="h-4 w-4 text-blue-600" />
                   <h3 className="font-semibold text-gray-900">{invoice.code}</h3>
                 </div>
-                <Badge className={`${getStatusColor(invoice.invoiceStatus)} flex items-center gap-1 text-xs`}>
-                  {getStatusIcon(invoice.invoiceStatus)}
-                  {invoice.invoiceStatus}
+                <Badge className={`${getStatusColor(getEffectiveStatus(invoice))} flex items-center gap-1 text-xs`}>
+                  {getStatusIcon(getEffectiveStatus(invoice))}
+                  {getEffectiveStatus(invoice)}
                 </Badge>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -240,9 +256,9 @@ export function InvoicesList({
                   </div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
-                  <Badge className={`${getStatusColor(invoice.invoiceStatus)} flex items-center gap-1 text-xs w-fit`}>
-                    {getStatusIcon(invoice.invoiceStatus)}
-                    {invoice.invoiceStatus}
+                  <Badge className={`${getStatusColor(getEffectiveStatus(invoice))} flex items-center gap-1 text-xs w-fit`}>
+                    {getStatusIcon(getEffectiveStatus(invoice))}
+                    {getEffectiveStatus(invoice)}
                   </Badge>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
