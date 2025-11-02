@@ -754,6 +754,11 @@ export function InvoiceModal({ isOpen, onClose, mode, invoice, onSave }: Invoice
             {mode === 'edit' && 'Edit Invoice'}
             {mode === 'view' && 'View Invoice'}
           </DialogTitle>
+          <DialogDescription>
+            {mode === 'new' && 'Create a new invoice by selecting a contact, date, and items to invoice.'}
+            {mode === 'edit' && 'Update invoice details and dates.'}
+            {mode === 'view' && 'View invoice details, payments, and history.'}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)}>

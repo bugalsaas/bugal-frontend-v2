@@ -135,7 +135,11 @@ export const invoicesApi = {
     const params = new URLSearchParams();
     
     if (filters.status) {
-      params.append('status', filters.status);
+      // Backend expects "Written-off" but frontend enum is "Written Off", so map it
+      const statusForApi = filters.status === InvoiceStatus.WrittenOff 
+        ? 'Written-off' 
+        : filters.status;
+      params.append('status', statusForApi);
     }
     if (filters.contact) {
       params.append('contact', filters.contact);
@@ -161,7 +165,9 @@ export const invoicesApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch invoices');
+      const errorText = await response.text();
+      console.error('Invoices fetch error:', response.status, errorText);
+      throw new Error(`Failed to fetch invoices: ${errorText || response.statusText}`);
     }
 
     return response.json();

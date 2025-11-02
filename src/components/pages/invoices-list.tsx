@@ -163,7 +163,6 @@ export function InvoicesList({
       <div className="text-center py-12 text-red-600">
         <AlertCircle className="h-12 w-12 mx-auto mb-4" />
         <p>Error: {error}</p>
-        <Button onClick={reloadList} className="mt-4">Retry</Button>
       </div>
     );
   }
