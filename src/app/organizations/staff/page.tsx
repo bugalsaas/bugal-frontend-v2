@@ -315,7 +315,7 @@ function StaffModal({ isOpen, onClose, mode, user, onSave }: StaffModalProps) {
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {roles.map((role) => (
+                  {(roles || []).map((role) => (
                     <SelectItem key={role.id} value={role.id}>
                       {role.name}
                     </SelectItem>

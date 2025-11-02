@@ -284,12 +284,20 @@ export function useRoles(idOrganization: string) {
   const [error, setError] = useState<string | null>(null);
 
   const loadRoles = useCallback(async () => {
+    if (!idOrganization) {
+      setData([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
       
       const roles = await organizationsApi.getRoles(idOrganization);
-      setData(roles);
+      // Ensure we have an array - handle both direct array and wrapped responses
+      const rolesArray = Array.isArray(roles) ? roles : (roles?.data || []);
+      setData(rolesArray);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load roles');
       setData([]);
@@ -321,7 +329,9 @@ export function useCountries() {
       setError(null);
       
       const countries = await organizationsApi.getCountries();
-      setData(countries);
+      // Ensure we have an array - handle both direct array and wrapped responses
+      const countriesArray = Array.isArray(countries) ? countries : (countries?.data || []);
+      setData(countriesArray);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load countries');
       setData([]);
@@ -359,7 +369,9 @@ export function useStates(idCountry: string) {
       setError(null);
       
       const states = await organizationsApi.getStates(idCountry);
-      setData(states);
+      // Ensure we have an array - handle both direct array and wrapped responses
+      const statesArray = Array.isArray(states) ? states : (states?.data || []);
+      setData(statesArray);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load states');
       setData([]);
@@ -391,7 +403,9 @@ export function useBanks() {
       setError(null);
       
       const banks = await organizationsApi.getBanks();
-      setData(banks);
+      // Ensure we have an array - handle both direct array and wrapped responses
+      const banksArray = Array.isArray(banks) ? banks : (banks?.data || []);
+      setData(banksArray);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load banks');
       setData([]);

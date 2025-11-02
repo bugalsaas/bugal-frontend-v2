@@ -280,7 +280,7 @@ export default function OrganizationSettingsPage() {
                       <SelectValue placeholder="Select country" />
                     </SelectTrigger>
                     <SelectContent>
-                      {countries.map((country) => (
+                      {(countries || []).map((country) => (
                         <SelectItem key={country.id} value={country.id}>
                           {country.name}
                         </SelectItem>
@@ -303,7 +303,7 @@ export default function OrganizationSettingsPage() {
                       <SelectValue placeholder="Select state" />
                     </SelectTrigger>
                     <SelectContent>
-                      {states.map((state) => (
+                      {(states || []).map((state) => (
                         <SelectItem key={state.id} value={state.id}>
                           {state.name}
                         </SelectItem>
@@ -450,7 +450,7 @@ export default function OrganizationSettingsPage() {
                       <SelectValue placeholder="Select bank" />
                     </SelectTrigger>
                     <SelectContent>
-                      {banks.map((bank) => (
+                      {(banks || []).map((bank) => (
                         <SelectItem key={bank.id} value={bank.id}>
                           {bank.name}
                         </SelectItem>
@@ -511,11 +511,11 @@ export default function OrganizationSettingsPage() {
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-700">Created</Label>
-                  <p className="text-sm text-gray-900">{formatDate(new Date(currentOrganization.createdAt))}</p>
+                  <p className="text-sm text-gray-900">{formatDate(currentOrganization.createdAt)}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-700">Trial End Date</Label>
-                  <p className="text-sm text-gray-900">{formatDate(new Date(currentOrganization.trialEndDate))}</p>
+                  <p className="text-sm text-gray-900">{formatDate(currentOrganization.trialEndDate)}</p>
                 </div>
               </div>
             </CardContent>

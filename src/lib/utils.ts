@@ -12,18 +12,36 @@ export function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
-export function formatDate(date: Date): string {
+export function formatDate(date: Date | string | undefined | null): string {
+  if (!date) return '-';
+  
+  const dateObj = date instanceof Date ? date : new Date(date);
+  
+  // Check if date is valid
+  if (isNaN(dateObj.getTime())) {
+    return '-';
+  }
+  
   return new Intl.DateTimeFormat('en-AU', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(date)
+  }).format(dateObj)
 }
 
-export function formatTime(date: Date): string {
+export function formatTime(date: Date | string | undefined | null): string {
+  if (!date) return '-';
+  
+  const dateObj = date instanceof Date ? date : new Date(date);
+  
+  // Check if date is valid
+  if (isNaN(dateObj.getTime())) {
+    return '-';
+  }
+  
   return new Intl.DateTimeFormat('en-AU', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
-  }).format(date)
+  }).format(dateObj)
 }
