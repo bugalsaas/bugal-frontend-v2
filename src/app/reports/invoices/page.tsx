@@ -35,7 +35,7 @@ type InvoiceReportFormValues = z.infer<typeof invoiceReportSchema>;
 
 export default function InvoicesReportPage() {
   const { loading, obj, generate } = useReportInvoice();
-  const { contacts } = useContacts();
+  const { data: contacts } = useContacts();
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
 
@@ -115,7 +115,7 @@ export default function InvoicesReportPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="-1">All Contacts</SelectItem>
-                  {contacts.map((contact) => (
+                  {(contacts || []).map((contact) => (
                     <SelectItem key={contact.id} value={contact.id}>
                       {contact.fullName}
                     </SelectItem>
@@ -148,39 +148,19 @@ export default function InvoicesReportPage() {
         {!loading && obj?.summary && (
           <ReportSummary>
             <ReportSummaryItem
-              left={
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <span>Paid</span>
-                </div>
-              }
+              left="Paid"
               right={formatCurrency(obj.summary.paid)}
             />
             <ReportSummaryItem
-              left={
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4 text-yellow-600" />
-                  <span>Unpaid</span>
-                </div>
-              }
+              left="Unpaid"
               right={formatCurrency(obj.summary.unpaid)}
             />
             <ReportSummaryItem
-              left={
-                <div className="flex items-center space-x-2">
-                  <AlertCircle className="h-4 w-4 text-red-600" />
-                  <span>Overdue</span>
-                </div>
-              }
+              left="Overdue"
               right={formatCurrency(obj.summary.overdue)}
             />
             <ReportSummaryItem
-              left={
-                <div className="flex items-center space-x-2">
-                  <XCircle className="h-4 w-4 text-gray-600" />
-                  <span>Written Off</span>
-                </div>
-              }
+              left="Written Off"
               right={formatCurrency(obj.summary.writtenOff)}
             />
           </ReportSummary>
@@ -191,12 +171,7 @@ export default function InvoicesReportPage() {
           <ReportBreakdown
             title="Paid Invoices"
             data={obj.paid}
-            renderLeft={(item) => (
-              <div className="flex items-center space-x-2">
-                <FileText className="h-4 w-4" />
-                <span>{item.code}</span>
-              </div>
-            )}
+            renderLeft={(item) => item.code}
             renderRight={(item) => formatCurrency(item.totalInclGst)}
             renderItem={(item) => (
               <>
@@ -215,12 +190,7 @@ export default function InvoicesReportPage() {
           <ReportBreakdown
             title="Unpaid Invoices"
             data={obj.unpaid}
-            renderLeft={(item) => (
-              <div className="flex items-center space-x-2">
-                <FileText className="h-4 w-4" />
-                <span>{item.code}</span>
-              </div>
-            )}
+            renderLeft={(item) => item.code}
             renderRight={(item) => formatCurrency(item.totalInclGst)}
             renderItem={(item) => (
               <>
@@ -239,12 +209,7 @@ export default function InvoicesReportPage() {
           <ReportBreakdown
             title="Overdue Invoices"
             data={obj.overdue}
-            renderLeft={(item) => (
-              <div className="flex items-center space-x-2">
-                <FileText className="h-4 w-4" />
-                <span>{item.code}</span>
-              </div>
-            )}
+            renderLeft={(item) => item.code}
             renderRight={(item) => formatCurrency(item.totalInclGst)}
             renderItem={(item) => (
               <>
@@ -263,12 +228,7 @@ export default function InvoicesReportPage() {
           <ReportBreakdown
             title="Written Off Invoices"
             data={obj.writtenOff}
-            renderLeft={(item) => (
-              <div className="flex items-center space-x-2">
-                <FileText className="h-4 w-4" />
-                <span>{item.code}</span>
-              </div>
-            )}
+            renderLeft={(item) => item.code}
             renderRight={(item) => formatCurrency(item.totalInclGst)}
             renderItem={(item) => (
               <>

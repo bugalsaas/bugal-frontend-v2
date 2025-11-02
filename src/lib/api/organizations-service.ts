@@ -26,6 +26,9 @@ export interface Country {
   id: string;
   name: string;
   code: string;
+  tax?: number;
+  fyStartMonth?: number; // Fiscal year start month (1-12)
+  fyStartDay?: number; // Fiscal year start day (1-31)
 }
 
 export interface State {

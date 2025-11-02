@@ -35,7 +35,7 @@ type IncidentReportFormValues = z.infer<typeof incidentReportSchema>;
 
 export default function IncidentsReportPage() {
   const { loading, obj, generate } = useReportIncident();
-  const { contacts } = useContacts();
+  const { data: contacts } = useContacts();
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
 
@@ -143,15 +143,10 @@ export default function IncidentsReportPage() {
         </div>
 
         {/* Report Summary */}
-        {!loading && obj?.summary && obj.summary.count > 0 && (
+        {!loading && obj?.summary && (
           <ReportSummary>
             <ReportSummaryItem
-              left={
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span>Total Incidents</span>
-                </div>
-              }
+              left="Count"
               right={obj.summary.count.toString()}
             />
           </ReportSummary>
@@ -162,17 +157,8 @@ export default function IncidentsReportPage() {
           <ReportBreakdown
             title={`${obj.summary.count} Incident${obj.summary.count > 1 ? 's' : ''}`}
             data={obj.data}
-            renderLeft={(item) => (
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="h-4 w-4" />
-                <span>{item.code}</span>
-              </div>
-            )}
-            renderRight={(item) => (
-              <div className="text-sm text-gray-600">
-                {formatDate(new Date(item.date))}
-              </div>
-            )}
+            renderLeft={(item) => item.code}
+            renderRight={(item) => formatDate(new Date(item.date))}
             renderItem={(item) => (
               <>
                 <div className="space-y-4">

@@ -19,3 +19,11 @@ export function formatDate(date: Date): string {
     day: '2-digit',
   }).format(date)
 }
+
+export function formatTime(date: Date): string {
+  return new Intl.DateTimeFormat('en-AU', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(date)
+}

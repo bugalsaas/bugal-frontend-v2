@@ -13,14 +13,13 @@ import { ReportBreakdown } from '@/components/reports/report-breakdown';
 import { DescriptionItem } from '@/components/reports/description-item';
 import { useReportKm } from '@/hooks/use-reports';
 import { useContacts } from '@/hooks/use-contacts';
+import { UserSelector } from '@/components/ui/user-selector';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { 
   FileText, 
   Car, 
-  MapPin,
   AlertCircle,
   Loader2,
-  User,
 } from 'lucide-react';
 
 const kmsReportSchema = z.object({
@@ -34,7 +33,7 @@ type KmsReportFormValues = z.infer<typeof kmsReportSchema>;
 
 export default function KmsReportPage() {
   const { loading, obj, generate } = useReportKm();
-  const { contacts } = useContacts();
+  const { data: contacts } = useContacts();
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
 
@@ -91,21 +90,12 @@ export default function KmsReportPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assignee
+                  Assignee *
                 </label>
-                <Select
+                <UserSelector
                   value={watch('idAssignee')}
                   onValueChange={(value) => setValue('idAssignee', value, { shouldValidate: true })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select assignee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="-1">All Assignees</SelectItem>
-                    <SelectItem value="user1">Sarah Johnson</SelectItem>
-                    <SelectItem value="user2">Mike Wilson</SelectItem>
-                  </SelectContent>
-                </Select>
+                />
                 {errors.idAssignee && (
                   <p className="text-red-500 text-sm mt-1">{errors.idAssignee.message}</p>
                 )}
@@ -113,20 +103,21 @@ export default function KmsReportPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contact
+                  Contact *
                 </label>
                 <Select
                   value={watch('idContact')}
                   onValueChange={(value) => setValue('idContact', value, { shouldValidate: true })}
+                  disabled={loading}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select contact" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="-1">All Contacts</SelectItem>
-                    {contacts.map((contact) => (
+                    {(contacts || []).map((contact) => (
                       <SelectItem key={contact.id} value={contact.id}>
-                        {contact.fullName}
+                        {contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || contact.organisationName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -162,13 +153,8 @@ export default function KmsReportPage() {
               right={obj.summary.count.toString()}
             />
             <ReportSummaryItem
-              left={
-                <div className="flex items-center space-x-2">
-                  <Car className="h-4 w-4" />
-                  <span>Kilometres</span>
-                </div>
-              }
-              right={`${obj.summary.kms} km`}
+              left="Kilometres"
+              right={obj.summary.kms.toString()}
             />
             <ReportSummaryItem
               left="Total"
@@ -183,21 +169,15 @@ export default function KmsReportPage() {
             title="Breakdown"
             data={obj.data}
             renderLeft={(item) => (
-              <div className="flex items-center space-x-2">
-                <Car className="h-4 w-4" />
-                <span>{formatDate(new Date(item.date))}</span>
-              </div>
+              <span>{formatDate(new Date(item.date))}</span>
             )}
             renderRight={(item) => formatCurrency(item.amountInclGst)}
             renderItem={(item) => (
               <>
-                <DescriptionItem title="Contact" content={item.contact.fullName} />
-                <DescriptionItem title="Payee" content={item.payee} />
-                <DescriptionItem title="Description" content={item.description} />
-                <DescriptionItem title="Kilometres" content={`${item.kms} km`} />
-                <DescriptionItem title="Rate per km" content={formatCurrency(item.kmRateAmountExclGst)} />
-                <DescriptionItem title="Amount Excl. GST" content={formatCurrency(item.amountExclGst)} />
-                <DescriptionItem title="GST" content={formatCurrency(item.amountGst)} />
+                <DescriptionItem title="Contact" content={item.contact?.fullName || '-'} />
+                <DescriptionItem title="Assignee" content={item.shift?.assignee?.fullName || '-'} />
+                <DescriptionItem title="Kilometres" content={item.kms?.toString() || '0'} />
+                <DescriptionItem title="Amount GST" content={formatCurrency(item.amountGst || 0)} />
               </>
             )}
           />

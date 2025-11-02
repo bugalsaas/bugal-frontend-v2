@@ -112,21 +112,11 @@ export default function TaxReportPage() {
         {!loading && obj?.summary && (
           <ReportSummary>
             <ReportSummaryItem
-              left={
-                <div className="flex items-center space-x-2">
-                  <Receipt className="h-4 w-4" />
-                  <span>Receipts</span>
-                </div>
-              }
+              left="Receipts"
               right={formatCurrency(obj.summary.receiptsTotalInclGst)}
             />
             <ReportSummaryItem
-              left={
-                <div className="flex items-center space-x-2">
-                  <Wallet className="h-4 w-4" />
-                  <span>Expenses</span>
-                </div>
-              }
+              left="Expenses"
               right={formatCurrency(obj.summary.expensesTotalInclGst)}
             />
             <ReportSummaryItem
@@ -141,12 +131,7 @@ export default function TaxReportPage() {
           <ReportBreakdown
             title="Receipts"
             data={obj.receipts}
-            renderLeft={(item) => (
-              <div className="flex items-center space-x-2">
-                <Receipt className="h-4 w-4" />
-                <span>{item.invoice.code}</span>
-              </div>
-            )}
+            renderLeft={(item) => item.invoice.code}
             renderRight={(item) => formatCurrency(item.amountInclGst)}
             renderItem={(item) => (
               <>
@@ -163,12 +148,7 @@ export default function TaxReportPage() {
           <ReportBreakdown
             title="Expenses"
             data={obj.expenses}
-            renderLeft={(item) => (
-              <div className="flex items-center space-x-2">
-                <Wallet className="h-4 w-4" />
-                <span>{formatDate(new Date(item.date))}</span>
-              </div>
-            )}
+            renderLeft={(item) => formatDate(new Date(item.date))}
             renderRight={(item) => formatCurrency(item.amountInclGst)}
             renderItem={(item) => (
               <>

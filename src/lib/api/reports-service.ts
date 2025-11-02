@@ -44,6 +44,7 @@ export interface ShiftReportItem {
   amountInclGst?: number;
   amountGst?: number;
   totalInclGst?: number;
+  payee?: string;
   contact: {
     id: string;
     fullName: string;
@@ -132,16 +133,21 @@ export interface KmsReportData {
   data: Array<{
     id: string;
     date: string;
-    payee: string;
-    description: string;
+    payee?: string;
+    description?: string;
     kms: number;
-    kmRateAmountExclGst: number;
+    kmRateAmountExclGst?: number;
     amountExclGst: number;
     amountGst: number;
     amountInclGst: number;
     contact: {
       id: string;
       fullName: string;
+    };
+    shift?: {
+      assignee?: {
+        fullName: string;
+      };
     };
   }>;
 }

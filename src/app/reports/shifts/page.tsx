@@ -13,14 +13,15 @@ import { ReportBreakdown } from '@/components/reports/report-breakdown';
 import { DescriptionItem } from '@/components/reports/description-item';
 import { useReportShift } from '@/hooks/use-reports';
 import { useContacts } from '@/hooks/use-contacts';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { UserSelector } from '@/components/ui/user-selector';
+import { formatCurrency, formatDate, formatTime } from '@/lib/utils';
+import { getDurationDisplay } from '@/lib/utils/duration';
+import { getTimezoneDisplay } from '@/lib/utils/timezone';
+import { getShiftStatusColor } from '@/lib/utils/shift-helpers';
 import { 
   FileText, 
   Wallet, 
   Clock, 
-  User, 
-  Calendar,
-  MapPin,
   AlertCircle,
   Loader2,
 } from 'lucide-react';
@@ -63,24 +64,6 @@ export default function ShiftsReportPage() {
     }
   };
 
-  const getDurationDisplay = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}h ${mins}m`;
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'completed':
-        return 'text-green-600';
-      case 'in progress':
-        return 'text-blue-600';
-      case 'cancelled':
-        return 'text-red-600';
-      default:
-        return 'text-gray-600';
-    }
-  };
 
   const headerConfig = {
     title: 'Shift Report',
@@ -112,21 +95,12 @@ export default function ShiftsReportPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assignee
+                  Assignee *
                 </label>
-                <Select
+                <UserSelector
                   value={watch('idAssignee')}
                   onValueChange={(value) => setValue('idAssignee', value, { shouldValidate: true })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select assignee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="-1">All Assignees</SelectItem>
-                    <SelectItem value="user1">Sarah Johnson</SelectItem>
-                    <SelectItem value="user2">Mike Wilson</SelectItem>
-                  </SelectContent>
-                </Select>
+                />
                 {errors.idAssignee && (
                   <p className="text-red-500 text-sm mt-1">{errors.idAssignee.message}</p>
                 )}
@@ -134,20 +108,21 @@ export default function ShiftsReportPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contact
+                  Contact *
                 </label>
                 <Select
                   value={watch('idContact')}
                   onValueChange={(value) => setValue('idContact', value, { shouldValidate: true })}
+                  disabled={loading}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select contact" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="-1">All Contacts</SelectItem>
-                    {contacts?.map((contact) => (
+                    {(contacts || []).map((contact) => (
                       <SelectItem key={contact.id} value={contact.id}>
-                        {contact.fullName}
+                        {contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || contact.organisationName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -180,19 +155,19 @@ export default function ShiftsReportPage() {
           <ReportSummary>
             <ReportSummaryItem
               left={
-                <div className="flex items-center space-x-2">
-                  <Wallet className="h-4 w-4" />
-                  <span>Expenses x {obj.summary.expensesCount}</span>
-                </div>
+                <>
+                  <Wallet className="h-4 w-4 inline mr-1" />
+                  Expenses x {obj.summary.expensesCount}
+                </>
               }
               right={formatCurrency(obj.summary.expensesTotalInclGst)}
             />
             <ReportSummaryItem
               left={
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4" />
-                  <span>Shifts x {obj.summary.shiftsCount} ({getDurationDisplay(obj.summary.shiftsDuration)})</span>
-                </div>
+                <>
+                  <Clock className="h-4 w-4 inline mr-1" />
+                  Shifts x {obj.summary.shiftsCount} ({getDurationDisplay(obj.summary.shiftsDuration / 60)})
+                </>
               }
               right={formatCurrency(obj.summary.shiftsTotalInclGst)}
             />
@@ -211,24 +186,24 @@ export default function ShiftsReportPage() {
             renderLeft={(item) => {
               if (item.isExpense) {
                 return (
-                  <div className="flex items-center space-x-2">
-                    <Wallet className="h-4 w-4" />
+                  <>
+                    <Wallet className="h-4 w-4 inline mr-1" />
                     <span>{formatDate(new Date(item.date))}</span>
-                  </div>
+                  </>
                 );
               }
 
               return (
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4" />
+                <>
+                  <Clock className="h-4 w-4 inline mr-1" />
                   <span>{formatDate(new Date(item.startDate!))}</span>
                   {item.expenses && item.expenses.length > 0 && (
-                    <span className="text-gray-500">
+                    <span className="text-gray-500 ml-2">
                       <Wallet className="h-3 w-3 inline mr-1" />
                       x {item.expenses.length}
                     </span>
                   )}
-                </div>
+                </>
               );
             }}
             renderRight={(item) => {
@@ -241,34 +216,37 @@ export default function ShiftsReportPage() {
               if (item.isExpense) {
                 return (
                   <>
-                    <DescriptionItem title="Contact" content={item.contact.fullName} />
-                    <DescriptionItem title="Payee" content="Self" />
+                    <DescriptionItem title="Contact" content={item.contact?.fullName || '-'} />
+                    <DescriptionItem title="Payee" content={(item as any).payee || '-'} />
                     <DescriptionItem title="Amount GST" content={formatCurrency(item.amountGst || 0)} />
                   </>
                 );
               }
+
+              const startDate = item.startDate ? new Date(item.startDate) : undefined;
+              const statusColor = getShiftStatusColor(item.shiftStatus || '', startDate);
 
               return (
                 <>
                   <DescriptionItem 
                     title="Status" 
                     content={
-                      <span className={`font-bold ${getStatusColor(item.shiftStatus || '')}`}>
-                        {item.shiftStatus}
+                      <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '14px' }}>
+                        {item.shiftStatus || '-'}
                       </span>
                     } 
                   />
-                  <DescriptionItem title="Assignee" content={item.assignee?.fullName || 'N/A'} />
-                  <DescriptionItem title="Contact" content={item.contact.fullName} />
-                  <DescriptionItem title="Summary" content={item.summary || 'N/A'} />
-                  <DescriptionItem title="Category" content={item.category || 'N/A'} />
-                  <DescriptionItem title="Location" content={item.location || 'N/A'} />
-                  <DescriptionItem title="Timezone" content={item.tz || 'N/A'} />
+                  <DescriptionItem title="Assignee" content={item.assignee?.fullName || '-'} />
+                  <DescriptionItem title="Contact" content={item.contact?.fullName || '-'} />
+                  <DescriptionItem title="Summary" content={item.summary || '-'} />
+                  <DescriptionItem title="Category" content={item.category || '-'} />
+                  <DescriptionItem title="Location" content={item.location || '-'} />
+                  <DescriptionItem title="Timezone" content={item.tz ? getTimezoneDisplay(item.tz) : '-'} />
                   <DescriptionItem 
                     title="Time" 
-                    content={`${formatDate(new Date(item.startDate!))} (${getDurationDisplay(item.duration || 0)})`} 
+                    content={startDate ? `${formatTime(startDate)} (${getDurationDisplay((item.duration || 0) / 60)})` : '-'}
                   />
-                  <DescriptionItem title="Notes" content={item.notes || 'N/A'} />
+                  <DescriptionItem title="Notes" content={item.notes || '-'} />
                   <DescriptionItem
                     title="Expenses"
                     content={formatCurrency(
@@ -276,18 +254,15 @@ export default function ShiftsReportPage() {
                     )}
                   />
                   {item.attachments && item.attachments.length > 0 && (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-gray-700">Attachments:</span>
-                      <div className="flex space-x-2">
-                        {item.attachments.map((attachment) => (
-                          <img 
-                            key={attachment.id} 
-                            src={attachment.url} 
-                            alt="Attachment" 
-                            className="w-12 h-12 object-cover rounded border"
-                          />
-                        ))}
-                      </div>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {(item.attachments || []).map((attachment) => (
+                        <img 
+                          key={attachment.id} 
+                          src={attachment.url} 
+                          alt="Attachment" 
+                          className="w-12 h-12 object-cover rounded border"
+                        />
+                      ))}
                     </div>
                   )}
                 </>

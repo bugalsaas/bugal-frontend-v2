@@ -325,7 +325,8 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
                         return (
                           <Card
                             key={firstShift.id}
-                            className={`p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4 ${borderColor}`}
+                            className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4"
+                            style={{ borderLeftColor: borderColor }}
                             onClick={() => handleViewShift(firstShift)}
                           >
                             <div className="flex items-start justify-between gap-4">
@@ -461,7 +462,8 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
                     return (
                       <Card
                         key={shift.id}
-                        className={`p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4 ${borderColor}`}
+                        className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4"
+                        style={{ borderLeftColor: borderColor }}
                         onClick={() => handleViewShift(shift)}
                       >
                         <div className="flex items-start justify-between gap-4">
