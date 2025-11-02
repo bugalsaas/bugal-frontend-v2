@@ -11,6 +11,7 @@ export interface UseContactsOptions {
 }
 
 export function useContacts(options: UseContactsOptions = {}) {
+  const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Contact[]>([]);
@@ -27,6 +28,14 @@ export function useContacts(options: UseContactsOptions = {}) {
   });
 
   const loadContacts = useCallback(async () => {
+    // Don't load if not authenticated
+    if (!isAuthenticated) {
+      setData([]);
+      setTotal(0);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -57,7 +66,7 @@ export function useContacts(options: UseContactsOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [filter, pagination]);
+  }, [filter, pagination, isAuthenticated]);
 
   useEffect(() => {
     loadContacts();

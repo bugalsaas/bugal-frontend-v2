@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,13 +13,27 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Invoice, 
   InvoiceStatus, 
-  InvoicePayment, 
-  PaymentMethod 
+  Receipt,
+  ReceiptType,
+  PaymentMethod,
+  InvoiceShift,
+  InvoiceExpense,
+  InvoiceNotification,
+  InvoiceCreateDto,
+  InvoiceUpdateDto
 } from '@/lib/api/invoices-service';
-import { useInvoiceActions } from '@/hooks/use-invoices';
+import { useInvoiceActions, useInvoice } from '@/hooks/use-invoices';
+import { useContacts } from '@/hooks/use-contacts';
+import { useShiftsToInvoice } from '@/hooks/use-shifts';
+import { useExpensesToInvoice } from '@/hooks/use-expenses';
+import { useAuth } from '@/contexts/auth-context';
+import { Shift } from '@/lib/api/shifts-service';
+import { Expense, ExpenseType } from '@/lib/api/expenses-service';
 import { 
   FileText, 
   DollarSign, 
@@ -28,26 +42,39 @@ import {
   Mail,
   Download,
   Send,
-  Eye,
   AlertCircle,
   CheckCircle,
   XCircle,
   Clock,
   Plus,
   Trash2,
+  Loader2,
+  Car,
+  Receipt as ReceiptIcon,
 } from 'lucide-react';
 import { DatePickerInputField } from '@/components/form/date-picker-input-field';
+import { formatShiftDuration } from '@/lib/utils/shift-helpers';
 
-// Form validation schema
-const invoiceSchema = z.object({
-  code: z.string().min(1, 'Invoice code is required'),
-  contactId: z.string().min(1, 'Contact is required'),
-  date: z.string().min(1, 'Date is required'),
-  dueDate: z.string().min(1, 'Due date is required'),
-  notes: z.string().optional(),
-});
+// Form validation schema - different for new vs edit
+const createInvoiceSchema = (isNew: boolean) => {
+  if (isNew) {
+    return z.object({
+      contactId: z.string().min(1, 'Contact is required'),
+      date: z.string().min(1, 'Date is required'),
+      dueDate: z.string().min(1, 'Due date is required'),
+      shiftIds: z.array(z.string()).default([]),
+      expenseIds: z.array(z.string()).default([]),
+    });
+  } else {
+    // Edit mode - only allow date changes
+    return z.object({
+      date: z.string().min(1, 'Date is required'),
+      dueDate: z.string().min(1, 'Due date is required'),
+    });
+  }
+};
 
-type InvoiceFormData = z.infer<typeof invoiceSchema>;
+type InvoiceFormData = z.infer<ReturnType<typeof createInvoiceSchema>>;
 
 interface InvoiceModalProps {
   isOpen: boolean;
@@ -58,8 +85,27 @@ interface InvoiceModalProps {
 }
 
 export function InvoiceModal({ isOpen, onClose, mode, invoice, onSave }: InvoiceModalProps) {
+  const isNew = mode === 'new';
+  const isReadOnly = mode === 'view';
+  const invoiceSchema = createInvoiceSchema(isNew);
+  
   const [activeTab, setActiveTab] = useState('details');
-  const [payments, setPayments] = useState<InvoicePayment[]>([]);
+  const [payments, setPayments] = useState<Receipt[]>([]);
+  const [fetchedInvoice, setFetchedInvoice] = useState<Invoice | null>(null);
+  const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>([]);
+  const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
+
+  const { user, isOrganizationAdmin, isAuthenticated } = useAuth();
+  
+  // Load contacts for the dropdown (only in new mode)
+  // Note: API max pageSize is 100, so we use 100
+  const { data: contacts = [], loading: contactsLoading, error: contactsError } = useContacts(
+    isNew ? { pageSize: 100 } : {}
+  );
+  
+  const { loading: shiftsLoading, data: availableShifts, load: loadShifts, reset: resetShifts } = useShiftsToInvoice();
+  const { loading: expensesLoading, data: availableExpenses, load: loadExpenses, reset: resetExpenses } = useExpensesToInvoice();
+  const { loading: invoiceLoading, load: loadInvoice } = useInvoice();
 
   const { 
     createInvoice, 
@@ -67,67 +113,123 @@ export function InvoiceModal({ isOpen, onClose, mode, invoice, onSave }: Invoice
     deleteInvoice, 
     downloadInvoice, 
     notifyInvoice,
+    deleteReceipt,
     isSaving, 
-    isDeleting 
+    isDeleting,
+    isDeletingReceipt
   } = useInvoiceActions();
 
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceSchema),
-    defaultValues: {
-      code: '',
+    defaultValues: isNew ? {
       contactId: '',
+      date: new Date().toISOString().split('T')[0],
+      dueDate: '',
+      shiftIds: [],
+      expenseIds: [],
+    } : {
       date: '',
       dueDate: '',
-      notes: '',
     },
   });
 
+  // Fetch full invoice data when in view/edit mode
+  useEffect(() => {
+    if (isOpen && invoice?.id && (mode === 'view' || mode === 'edit')) {
+      loadInvoice(invoice.id)
+        .then(setFetchedInvoice)
+        .catch((err) => {
+          console.error('Failed to load invoice:', err);
+          setFetchedInvoice(invoice);
+        });
+    } else if (isOpen && !invoice?.id) {
+      setFetchedInvoice(null);
+    }
+  }, [isOpen, invoice?.id, mode, loadInvoice]);
+
   // Reset form when invoice changes
   useEffect(() => {
-    if (invoice) {
+    const invoiceToUse = fetchedInvoice || invoice;
+    
+    if (invoiceToUse) {
+      if (isNew) {
+        form.reset({
+          contactId: invoiceToUse.contact.id,
+          date: invoiceToUse.date.split('T')[0],
+          dueDate: invoiceToUse.dueDate.split('T')[0],
+          shiftIds: [],
+          expenseIds: [],
+        });
+      } else {
+        form.reset({
+          date: invoiceToUse.date.split('T')[0],
+          dueDate: invoiceToUse.dueDate.split('T')[0],
+        });
+      }
+      setPayments(invoiceToUse.receipts || []);
+    } else if (isNew) {
       form.reset({
-        code: invoice.code,
-        contactId: invoice.contact.id,
-        date: invoice.date.split('T')[0],
-        dueDate: invoice.dueDate.split('T')[0],
-        notes: '',
+        contactId: '',
+        date: new Date().toISOString().split('T')[0],
+        dueDate: '',
+        shiftIds: [],
+        expenseIds: [],
       });
-      setPayments(invoice.payments || []);
-    } else {
-      form.reset();
       setPayments([]);
+      setSelectedShiftIds([]);
+      setSelectedExpenseIds([]);
+      resetShifts();
+      resetExpenses();
     }
-  }, [invoice, form]);
+  }, [fetchedInvoice, invoice, form, isNew, resetShifts, resetExpenses]);
+
+  // Load shifts and expenses when contact changes in new mode
+  const handleContactChange = (contactId: string) => {
+    form.setValue('contactId', contactId);
+    if (contactId && isNew) {
+      // Determine assignee - use '-1' for all users if admin or has users:data:all scope, otherwise current user
+      const hasAllUsersAccess = user?.isAdmin || isOrganizationAdmin || (user?.scopes && Array.isArray(user.scopes) && user.scopes.includes('users:data:all'));
+      const assignee = hasAllUsersAccess ? '-1' : user?.id || '-1';
+      loadShifts(contactId, assignee);
+      loadExpenses(contactId);
+      setSelectedShiftIds([]);
+      setSelectedExpenseIds([]);
+    } else {
+      resetShifts();
+      resetExpenses();
+      setSelectedShiftIds([]);
+      setSelectedExpenseIds([]);
+    }
+  };
+
+  // Sync selected IDs with form
+  useEffect(() => {
+    if (isNew) {
+      form.setValue('shiftIds', selectedShiftIds);
+      form.setValue('expenseIds', selectedExpenseIds);
+    }
+  }, [selectedShiftIds, selectedExpenseIds, form, isNew]);
 
   const onSubmit = async (data: InvoiceFormData) => {
     try {
-      const invoiceData = {
-        ...data,
-        id: invoice?.id || Date.now().toString(),
-        contact: { id: data.contactId },
-        totalExclGst: 0,
-        totalInclGst: 0,
-        totalGst: 0,
-        paidExclGst: 0,
-        paidInclGst: 0,
-        writtenOffExclGst: 0,
-        writtenOffInclGst: 0,
-        outstandingExclGst: 0,
-        outstandingInclGst: 0,
-        invoiceStatus: InvoiceStatus.Unpaid,
-        shifts: [],
-        expenses: [],
-        notifications: [],
-        payments: [],
-      };
-
-      if (mode === 'new') {
-        await createInvoice(invoiceData);
-      } else if (mode === 'edit') {
-        await updateInvoice(invoice!.id, invoiceData);
+      if (isNew) {
+        const createData: InvoiceCreateDto = {
+          date: data.date,
+          dueDate: data.dueDate,
+          idContact: data.contactId,
+          shiftIds: data.shiftIds || [],
+          expenseIds: data.expenseIds || [],
+        };
+        const newInvoice = await createInvoice(createData);
+        onSave?.(newInvoice);
+      } else if (mode === 'edit' && invoice?.id) {
+        const updateData: InvoiceUpdateDto = {
+          date: data.date,
+          dueDate: data.dueDate,
+        };
+        const updatedInvoice = await updateInvoice(invoice.id, updateData);
+        onSave?.(updatedInvoice);
       }
-
-      onSave?.(invoiceData as Invoice);
       onClose();
     } catch (error) {
       console.error('Invoice save error:', error);
@@ -146,7 +248,19 @@ export function InvoiceModal({ isOpen, onClose, mode, invoice, onSave }: Invoice
     }
   };
 
-  const isReadOnly = mode === 'view';
+  const handleDeleteReceipt = async (receiptId: string) => {
+    if (!invoice?.id) return;
+    try {
+      await deleteReceipt(receiptId);
+      // Refresh invoice data
+      if (onSave) {
+        // Optionally reload invoice here if we add a reload function
+        onSave(invoice);
+      }
+    } catch (error) {
+      console.error('Failed to delete receipt:', error);
+    }
+  };
 
   const getStatusColor = (status: InvoiceStatus) => {
     switch (status) {
@@ -187,45 +301,67 @@ export function InvoiceModal({ isOpen, onClose, mode, invoice, onSave }: Invoice
     return new Date(dateString).toLocaleDateString('en-AU');
   };
 
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-AU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getExpenseIcon = (expenseType: string) => {
+    if (expenseType === ExpenseType.Reclaimable) {
+      return <Car className="h-4 w-4 text-blue-600" />;
+    }
+    if (expenseType === ExpenseType.Kilometre) {
+      return <Car className="h-4 w-4 text-green-600" />;
+    }
+    return <DollarSign className="h-4 w-4 text-gray-500" />;
+  };
+
+  const invoiceToDisplay = fetchedInvoice || invoice;
+
   const renderDetailsTab = () => (
     <div className="space-y-6">
       {/* Basic Information */}
       <div>
         <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="code">Invoice Code *</Label>
-            <Input
-              id="code"
-              {...form.register('code')}
-              placeholder="e.g., INV-2024-001"
-              disabled={isReadOnly}
-            />
-            {form.formState.errors.code && (
-              <p className="text-red-500 text-sm mt-1">{form.formState.errors.code.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="contactId">Contact *</Label>
-            <Select
-              value={form.watch('contactId')}
-              onValueChange={(value) => form.setValue('contactId', value)}
-              disabled={isReadOnly}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select contact" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">John Smith</SelectItem>
-                <SelectItem value="2">Sarah Johnson</SelectItem>
-                <SelectItem value="3">Mike Wilson</SelectItem>
-              </SelectContent>
-            </Select>
-            {form.formState.errors.contactId && (
-              <p className="text-red-500 text-sm mt-1">{form.formState.errors.contactId.message}</p>
-            )}
-          </div>
+          {isNew && (
+            <div>
+              <Label htmlFor="contactId">Contact *</Label>
+              <Select
+                value={form.watch('contactId') || ''}
+                onValueChange={handleContactChange}
+                disabled={isReadOnly || contactsLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={contactsLoading ? "Loading contacts..." : contactsError ? "Error loading contacts" : "Select contact"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {contactsError ? (
+                    <div className="px-2 py-1.5 text-sm text-red-600">Failed to load contacts. Please try again.</div>
+                  ) : contacts.length === 0 && !contactsLoading ? (
+                    <div className="px-2 py-1.5 text-sm text-gray-500">No contacts available</div>
+                  ) : (
+                    contacts.map((contact) => (
+                      <SelectItem key={contact.id} value={contact.id}>
+                        {contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || contact.organisationName}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {form.formState.errors.contactId && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.contactId.message}</p>
+              )}
+              {contactsError && (
+                <p className="text-red-500 text-sm mt-1">{contactsError}</p>
+              )}
+            </div>
+          )}
 
           <DatePickerInputField
             label="Invoice Date *"
@@ -247,171 +383,351 @@ export function InvoiceModal({ isOpen, onClose, mode, invoice, onSave }: Invoice
         </div>
       </div>
 
-      {/* Notes */}
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Notes</h3>
+      {/* Shifts Selection (only in new mode) */}
+      {isNew && form.watch('contactId') && (
         <div>
-          <Label htmlFor="notes">Additional Notes</Label>
-          <Textarea
-            id="notes"
-            {...form.register('notes')}
-            placeholder="Add any additional notes..."
-            disabled={isReadOnly}
-            rows={4}
-          />
+          <h3 className="text-lg font-semibold mb-4">Shifts</h3>
+          {shiftsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <span className="ml-2 text-gray-600">Loading shifts...</span>
+            </div>
+          ) : availableShifts.length === 0 ? (
+            <Alert>
+              <AlertDescription>No shifts available for invoicing for this contact.</AlertDescription>
+            </Alert>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                      <Checkbox
+                        checked={selectedShiftIds.length === availableShifts.length && availableShifts.length > 0}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedShiftIds(availableShifts.map(s => s.id));
+                          } else {
+                            setSelectedShiftIds([]);
+                          }
+                        }}
+                      />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Summary</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {availableShifts.map((shift) => (
+                    <tr 
+                      key={shift.id}
+                      className={`hover:bg-gray-50 ${selectedShiftIds.includes(shift.id) ? 'bg-blue-50' : ''}`}
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <Checkbox
+                          checked={selectedShiftIds.includes(shift.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedShiftIds([...selectedShiftIds, shift.id]);
+                            } else {
+                              setSelectedShiftIds(selectedShiftIds.filter(id => id !== shift.id));
+                            }
+                          }}
+                        />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{formatDate(shift.startDate)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{formatShiftDuration(shift.duration)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{shift.summary}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">{formatCurrency(shift.totalInclGst)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-      </div>
-    </div>
-  );
+      )}
 
-  const renderPaymentsTab = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Payments</h3>
-        {!isReadOnly && (
-          <Button size="sm" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add Payment
-          </Button>
-        )}
-      </div>
-
-      {payments.length > 0 ? (
-        <div className="space-y-3">
-          {payments.map((payment) => (
-            <Card key={payment.id} className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <DollarSign className="h-4 w-4 text-gray-500" />
-                    <span className="font-medium">{formatCurrency(payment.amountInclGst)}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">{formatDate(payment.date)}</span>
-                  </div>
-                  <Badge variant="outline">{payment.paymentMethod}</Badge>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {!isReadOnly && (
-                    <Button variant="ghost" size="sm">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {payment.notes && (
-                <p className="text-sm text-gray-600 mt-2">{payment.notes}</p>
-              )}
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-8">
-          <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No payments yet</h3>
-          <p className="text-gray-600 mb-4">Payments will appear here once they are recorded</p>
-          {!isReadOnly && (
-            <Button className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add Payment
-            </Button>
+      {/* Expenses Selection (only in new mode) */}
+      {isNew && form.watch('contactId') && (
+        <div>
+          <h3 className="text-lg font-semibold mb-4">Expenses</h3>
+          {expensesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <span className="ml-2 text-gray-600">Loading expenses...</span>
+            </div>
+          ) : availableExpenses.length === 0 ? (
+            <Alert>
+              <AlertDescription>No expenses available for invoicing for this contact.</AlertDescription>
+            </Alert>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                      <Checkbox
+                        checked={selectedExpenseIds.length === availableExpenses.length && availableExpenses.length > 0}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedExpenseIds(availableExpenses.map(e => e.id));
+                          } else {
+                            setSelectedExpenseIds([]);
+                          }
+                        }}
+                      />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {availableExpenses.map((expense) => (
+                    <tr 
+                      key={expense.id}
+                      className={`hover:bg-gray-50 ${selectedExpenseIds.includes(expense.id) ? 'bg-blue-50' : ''}`}
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <Checkbox
+                          checked={selectedExpenseIds.includes(expense.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedExpenseIds([...selectedExpenseIds, expense.id]);
+                            } else {
+                              setSelectedExpenseIds(selectedExpenseIds.filter(id => id !== expense.id));
+                            }
+                          }}
+                        />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        <div className="flex items-center space-x-2">
+                          {getExpenseIcon(expense.expenseType)}
+                          <span>{expense.expenseType}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{formatDate(expense.date)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{expense.description}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">{formatCurrency(expense.amountInclGst)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
     </div>
   );
 
-  const renderViewMode = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <FileText className="h-8 w-8 text-blue-600" />
+  const renderPaymentsTab = () => {
+    const receiptsToShow = invoiceToDisplay?.receipts || payments;
+    
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Receipts &amp; Write-offs</h3>
+        </div>
+
+        {receiptsToShow.length > 0 ? (
+          <div className="space-y-3">
+            {receiptsToShow.map((receipt) => (
+              <Card key={receipt.id} className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <ReceiptIcon className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium">{formatCurrency(receipt.amountInclGst)}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">{formatDate(receipt.date)}</span>
+                    </div>
+                    {receipt.receiptType === ReceiptType.InvoiceReceipt && receipt.paymentMethod && (
+                      <Badge variant="outline">{receipt.paymentMethod}</Badge>
+                    )}
+                    {receipt.receiptType === ReceiptType.InvoiceWriteOff && (
+                      <Badge variant="outline" className="bg-red-50 text-red-700">Write-off</Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {!isReadOnly && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteReceipt(receipt.id)}
+                        disabled={isDeletingReceipt}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {receipt.notes && (
+                  <p className="text-sm text-gray-600 mt-2">{receipt.notes}</p>
+                )}
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <ReceiptIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No receipts yet</h3>
+            <p className="text-gray-600 mb-4">Receipts and write-offs will appear here once they are recorded</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderViewMode = () => {
+    if (invoiceLoading && !invoiceToDisplay) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          <span className="ml-2 text-gray-600">Loading invoice...</span>
+        </div>
+      );
+    }
+
+    if (!invoiceToDisplay) {
+      return (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Invoice not found</AlertDescription>
+        </Alert>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        {/* Last notification alert */}
+        {invoiceToDisplay.notifications && invoiceToDisplay.notifications.length > 0 && (
+          <Alert>
+            <Mail className="h-4 w-4" />
+            <AlertDescription>
+              Last emailed on {formatDateTime(invoiceToDisplay.notifications[invoiceToDisplay.notifications.length - 1].createdAt)}.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <FileText className="h-8 w-8 text-blue-600" />
+            <div>
+              <h3 className="text-xl font-semibold">{invoiceToDisplay.code}</h3>
+              <div className="flex items-center space-x-2">
+                <Badge className={`${getStatusColor(invoiceToDisplay.invoiceStatus)} flex items-center gap-1`}>
+                  {getStatusIcon(invoiceToDisplay.invoiceStatus)}
+                  {invoiceToDisplay.invoiceStatus}
+                </Badge>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" onClick={handleDownload}>
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleNotify}>
+              <Send className="h-4 w-4 mr-2" />
+              Notify
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h3 className="text-xl font-semibold">{invoice?.code}</h3>
-            <div className="flex items-center space-x-2">
-              <Badge className={`${getStatusColor(invoice?.invoiceStatus || InvoiceStatus.Unpaid)} flex items-center gap-1`}>
-                {getStatusIcon(invoice?.invoiceStatus || InvoiceStatus.Unpaid)}
-                {invoice?.invoiceStatus}
-              </Badge>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={handleDownload}>
-            <Download className="h-4 w-4 mr-2" />
-            Download
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleNotify}>
-            <Send className="h-4 w-4 mr-2" />
-            Notify
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h4 className="font-semibold mb-3">Invoice Details</h4>
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <User className="h-4 w-4 text-gray-500" />
-              <span className="text-sm"><strong>Contact:</strong> {invoice?.contact.fullName}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-gray-500" />
-              <span className="text-sm"><strong>Date:</strong> {invoice?.date && formatDate(invoice.date)}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-gray-500" />
-              <span className="text-sm"><strong>Due Date:</strong> {invoice?.dueDate && formatDate(invoice.dueDate)}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <DollarSign className="h-4 w-4 text-gray-500" />
-              <span className="text-sm"><strong>Total:</strong> {invoice?.totalInclGst && formatCurrency(invoice.totalInclGst)}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <DollarSign className="h-4 w-4 text-gray-500" />
-              <span className="text-sm"><strong>Outstanding:</strong> {invoice?.outstandingInclGst && formatCurrency(invoice.outstandingInclGst)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {(invoice?.shifts?.length || 0) > 0 && (
-        <div>
-          <h4 className="font-semibold mb-3">Shifts ({invoice.shifts.length})</h4>
-          <div className="space-y-2">
-            {invoice.shifts.map((shift) => (
-              <div key={shift.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">{shift.summary}</p>
-                  <p className="text-sm text-gray-600">{formatDate(shift.startDate)}</p>
-                </div>
-                <span className="font-medium">{formatCurrency(shift.totalInclGst)}</span>
+            <h4 className="font-semibold mb-3">Invoice Details</h4>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <User className="h-4 w-4 text-gray-500" />
+                <span className="text-sm"><strong>Contact:</strong> {invoiceToDisplay.contact.fullName}</span>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {(invoice?.expenses?.length || 0) > 0 && (
-        <div>
-          <h4 className="font-semibold mb-3">Expenses ({invoice.expenses.length})</h4>
-          <div className="space-y-2">
-            {invoice.expenses.map((expense) => (
-              <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">{expense.description}</p>
-                  <p className="text-sm text-gray-600">{formatDate(expense.date)}</p>
-                </div>
-                <span className="font-medium">{formatCurrency(expense.amountInclGst)}</span>
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                <span className="text-sm"><strong>Date:</strong> {formatDate(invoiceToDisplay.date)}</span>
               </div>
-            ))}
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                <span className="text-sm"><strong>Due Date:</strong> {formatDate(invoiceToDisplay.dueDate)}</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-3">Totals</h4>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Total (incl. GST):</span>
+                <span className="text-sm font-medium">{formatCurrency(invoiceToDisplay.totalInclGst)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Paid (incl. GST):</span>
+                <span className="text-sm font-medium">{formatCurrency(invoiceToDisplay.paidInclGst)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Written Off (incl. GST):</span>
+                <span className="text-sm font-medium">{formatCurrency(invoiceToDisplay.writtenOffInclGst)}</span>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t">
+                <span className="text-sm font-semibold">Outstanding (incl. GST):</span>
+                <span className="text-sm font-semibold">{formatCurrency(invoiceToDisplay.outstandingInclGst)}</span>
+              </div>
+            </div>
           </div>
         </div>
-      )}
-    </div>
-  );
+
+        {(invoiceToDisplay.shifts?.length || 0) > 0 && (
+          <div>
+            <h4 className="font-semibold mb-3">Shifts ({invoiceToDisplay.shifts.length})</h4>
+            <div className="space-y-2">
+              {invoiceToDisplay.shifts.map((shift) => (
+                <Card key={shift.id} className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium">{shift.summary}</p>
+                      <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
+                        <span>{formatDate(shift.startDate)}</span>
+                        {shift.duration && <span>Duration: {formatShiftDuration(shift.duration)}</span>}
+                        {shift.assignee && <span>Staff: {shift.assignee.fullName}</span>}
+                      </div>
+                    </div>
+                    <span className="font-medium ml-4">{formatCurrency(shift.totalInclGst)}</span>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(invoiceToDisplay.expenses?.length || 0) > 0 && (
+          <div>
+            <h4 className="font-semibold mb-3">Expenses ({invoiceToDisplay.expenses.length})</h4>
+            <div className="space-y-2">
+              {invoiceToDisplay.expenses.map((expense) => (
+                <Card key={expense.id} className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3 flex-1">
+                      {getExpenseIcon(expense.expenseType)}
+                      <div>
+                        <p className="font-medium">{expense.description}</p>
+                        <p className="text-sm text-gray-600 mt-1">{formatDate(expense.date)}</p>
+                      </div>
+                    </div>
+                    <span className="font-medium ml-4">{formatCurrency(expense.amountInclGst)}</span>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -431,7 +747,9 @@ export function InvoiceModal({ isOpen, onClose, mode, invoice, onSave }: Invoice
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList>
                 <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="payments">Payments ({payments.length})</TabsTrigger>
+                <TabsTrigger value="payments">
+                  Receipts ({(invoiceToDisplay?.receipts || payments).length})
+                </TabsTrigger>
               </TabsList>
               
               <TabsContent value="details">

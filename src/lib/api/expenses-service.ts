@@ -77,11 +77,16 @@ export enum ExpenseCategories {
   Other = '17',
 }
 
+export enum ExpenseAction {
+  Invoice = 'Invoice',
+}
+
 export interface ExpenseFilters {
   type?: ExpenseType;
   contact?: string;
   from?: string;
   to?: string;
+  action?: ExpenseAction;
   pageNumber?: number;
   pageSize?: number;
 }
@@ -104,6 +109,9 @@ export const expensesApi = {
 
     const params = new URLSearchParams();
     
+    if (filters.action) {
+      params.append('action', filters.action);
+    }
     if (filters.type) {
       params.append('type', filters.type);
     }

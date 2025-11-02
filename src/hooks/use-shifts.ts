@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { shiftsApi, Shift, ShiftFilters, ShiftListResponse, ShiftStatus, DeleteShiftType, NotifyItem } from '@/lib/api/shifts-service';
+import { shiftsApi, Shift, ShiftFilters, ShiftListResponse, ShiftStatus, DeleteShiftType, NotifyItem, ShiftAction } from '@/lib/api/shifts-service';
 
 export interface UseShiftsOptions {
   defaultFilters?: ShiftFilters;
@@ -447,4 +447,44 @@ export function useShiftActions() {
     selectShift,
     clearSelection,
   };
+}
+
+export function useShiftsToInvoice() {
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | undefined>();
+  const [data, setData] = useState<Shift[]>([]);
+  const { isAuthenticated } = useAuth();
+
+  const load = useCallback(async (contactId: string, assignee: string) => {
+    if (!isAuthenticated || !contactId) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(undefined);
+
+    try {
+      const response = await shiftsApi.getAll({
+        action: ShiftAction.Invoice,
+        contact: contactId,
+        assignee,
+      });
+      setData(response.data);
+    } catch (err) {
+      console.error('Failed to load shifts for invoicing:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load shifts');
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  const reset = useCallback(() => {
+    setData([]);
+    setError(undefined);
+  }, []);
+
+  return { loading, data, error, load, reset };
 }

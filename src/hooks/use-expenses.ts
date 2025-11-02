@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { expensesApi, Expense, ExpenseFilters, ExpenseListResponse, ExpenseType } from '@/lib/api/expenses-service';
+import { expensesApi, Expense, ExpenseFilters, ExpenseListResponse, ExpenseType, ExpenseAction } from '@/lib/api/expenses-service';
 
 export interface UseExpensesOptions {
   defaultFilters?: ExpenseFilters;
@@ -143,4 +143,44 @@ export function useExpenseActions() {
     selectExpense,
     clearSelection,
   };
+}
+
+export function useExpensesToInvoice() {
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | undefined>();
+  const [data, setData] = useState<Expense[]>([]);
+  const { isAuthenticated } = useAuth();
+
+  const load = useCallback(async (contactId: string) => {
+    if (!isAuthenticated || !contactId) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(undefined);
+
+    try {
+      const response = await expensesApi.getAll({
+        action: ExpenseAction.Invoice,
+        contact: contactId,
+      });
+      // Response has structure { data: Expense[], meta: {...} }
+      setData(response.data || []);
+    } catch (err) {
+      console.error('Failed to load expenses for invoicing:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load expenses');
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  const reset = useCallback(() => {
+    setData([]);
+    setError(undefined);
+  }, []);
+
+  return { loading, data, error, load, reset };
 }

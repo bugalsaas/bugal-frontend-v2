@@ -120,7 +120,9 @@ export const contactsApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch contacts');
+      const errorText = await response.text();
+      console.error('Contacts fetch error:', response.status, errorText);
+      throw new Error(`Failed to fetch contacts: ${errorText || response.statusText}`);
     }
 
     return response.json();

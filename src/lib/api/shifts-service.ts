@@ -113,12 +113,17 @@ export enum RateType {
   Fixed = 'Fixed',
 }
 
+export enum ShiftAction {
+  Invoice = 'Invoice',
+}
+
 export interface ShiftFilters {
   status?: ShiftStatus;
   assignee?: string;
   contact?: string;
   before?: string;
   after?: string;
+  action?: ShiftAction;
   pageNumber?: number;
   pageSize?: number;
 }
@@ -137,6 +142,9 @@ export const shiftsApi = {
 
     const params = new URLSearchParams();
     
+    if (filters.action) {
+      params.append('action', filters.action);
+    }
     if (filters.status && filters.status !== ShiftStatus.All) {
       params.append('status', filters.status);
     }
@@ -153,6 +161,7 @@ export const shiftsApi = {
     }
     
     // Backend requires at least one of 'before' or 'after' to be provided
+    // UNLESS action=Invoice is specified (which doesn't need date filters)
     const hasBefore = filters.before && typeof filters.before === 'string' && filters.before.trim() !== '';
     const hasAfter = filters.after && typeof filters.after === 'string' && filters.after.trim() !== '';
     
@@ -163,8 +172,8 @@ export const shiftsApi = {
       params.append('after', filters.after);
     }
     
-    // If neither is provided, default to showing all future shifts (after today)
-    if (!hasBefore && !hasAfter) {
+    // If neither is provided and action is not Invoice, default to showing all future shifts (after today)
+    if (!hasBefore && !hasAfter && !filters.action) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayStr = today.toISOString().split('T')[0]; // Format as YYYY-MM-DD

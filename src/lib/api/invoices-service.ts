@@ -23,10 +23,59 @@ export interface Invoice {
   outstandingExclGst: number;
   outstandingInclGst: number;
   invoiceStatus: InvoiceStatus;
-  shifts: any[];
-  expenses: any[];
-  notifications: any[];
-  payments: InvoicePayment[];
+  shifts: InvoiceShift[];
+  expenses: InvoiceExpense[];
+  receipts: Receipt[];
+  notifications: InvoiceNotification[];
+}
+
+export interface InvoiceShift {
+  id: string;
+  code: string;
+  summary: string;
+  startDate: string;
+  duration: number;
+  totalExclGst: number;
+  totalInclGst: number;
+  shiftStatus: string;
+  assignee?: {
+    id: string;
+    fullName: string;
+  };
+}
+
+export interface InvoiceExpense {
+  id: string;
+  code: string;
+  description: string;
+  date: string;
+  amountExclGst: number;
+  amountInclGst: number;
+  expenseType: string;
+}
+
+export interface Receipt {
+  id: string;
+  code: string;
+  receiptType: ReceiptType;
+  date: string;
+  amountExclGst: number;
+  amountInclGst: number;
+  amountGst: number;
+  paymentMethod?: PaymentMethod;
+  otherPaymentMethod?: string;
+  notes?: string;
+}
+
+export interface InvoiceNotification {
+  id: string;
+  createdAt: string;
+  recipients: NotifyItem[];
+}
+
+export interface NotifyItem {
+  name: string;
+  email: string;
 }
 
 export enum InvoiceStatus {
@@ -36,20 +85,28 @@ export enum InvoiceStatus {
   WrittenOff = 'Written Off',
 }
 
-export interface InvoicePayment {
-  id: string;
-  date: string;
-  amountExclGst: number;
-  amountInclGst: number;
-  amountGst: number;
-  paymentMethod: PaymentMethod;
-  notes: string;
+export enum ReceiptType {
+  InvoiceReceipt = 'InvoiceReceipt',
+  InvoiceWriteOff = 'InvoiceWriteOff',
 }
 
 export enum PaymentMethod {
   EFT = 'EFT',
   Cash = 'Cash',
   Other = 'Other',
+}
+
+export interface InvoiceCreateDto {
+  date: string;
+  dueDate: string;
+  idContact: string;
+  shiftIds: string[];
+  expenseIds: string[];
+}
+
+export interface InvoiceUpdateDto {
+  date: string;
+  dueDate: string;
 }
 
 export interface InvoiceFilters {
@@ -128,7 +185,7 @@ export const invoicesApi = {
     return response.json();
   },
 
-  async create(invoice: Partial<Invoice>): Promise<Invoice> {
+  async create(invoice: InvoiceCreateDto): Promise<Invoice> {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
@@ -142,13 +199,15 @@ export const invoicesApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to create invoice');
+      const errorText = await response.text();
+      console.error('Invoice create error:', response.status, errorText);
+      throw new Error(`Failed to create invoice: ${errorText || response.statusText}`);
     }
 
     return response.json();
   },
 
-  async update(id: string, invoice: Partial<Invoice>): Promise<Invoice> {
+  async update(id: string, invoice: InvoiceUpdateDto): Promise<Invoice> {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
@@ -162,7 +221,9 @@ export const invoicesApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to update invoice');
+      const errorText = await response.text();
+      console.error('Invoice update error:', response.status, errorText);
+      throw new Error(`Failed to update invoice: ${errorText || response.statusText}`);
     }
 
     return response.json();
@@ -189,28 +250,47 @@ export const invoicesApi = {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${API_BASE_URL}/invoices/${id}/download`, {
+    // First get the signed URL
+    const urlResponse = await fetch(`${API_BASE_URL}/invoices/${id}/url`, {
       headers: {
         'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!urlResponse.ok) {
+      const errorText = await urlResponse.text();
+      console.error('Invoice URL error:', urlResponse.status, errorText);
+      throw new Error(`Failed to get invoice URL: ${errorText || urlResponse.statusText}`);
+    }
+
+    const { url } = await urlResponse.json();
+    
+    // Open the signed URL in a new window
+    window.open(url, '_blank');
+  },
+
+  async getRecipients(id: string): Promise<NotifyItem[]> {
+    const token = getToken();
+    if (!token) throw new Error('No authentication token');
+
+    const response = await fetch(`${API_BASE_URL}/invoices/${id}/recipients`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
     });
 
     if (!response.ok) {
-      throw new Error('Failed to download invoice');
+      const errorText = await response.text();
+      console.error('Invoice recipients error:', response.status, errorText);
+      throw new Error(`Failed to fetch recipients: ${errorText || response.statusText}`);
     }
 
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `invoice-${id}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    return response.json();
   },
 
-  async notify(id: string, payload: { recipients: any[] }): Promise<void> {
+  async notify(id: string, payload: { recipients: NotifyItem[] }): Promise<void> {
     const token = getToken();
     if (!token) throw new Error('No authentication token');
 
@@ -224,7 +304,9 @@ export const invoicesApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to notify invoice');
+      const errorText = await response.text();
+      console.error('Invoice notify error:', response.status, errorText);
+      throw new Error(`Failed to notify invoice: ${errorText || response.statusText}`);
     }
   },
 };

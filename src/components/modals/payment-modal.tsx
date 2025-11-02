@@ -12,27 +12,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { 
-  InvoicePayment, 
-  PaymentMethod 
+  PaymentMethod,
+  ReceiptType
 } from '@/lib/api/invoices-service';
+import { receiptsApi } from '@/lib/api/receipts-service';
 import { 
   DollarSign, 
-  Calendar, 
-  AlertCircle,
-  CheckCircle,
+  Loader2,
 } from 'lucide-react';
 import { DatePickerInputField } from '@/components/form/date-picker-input-field';
 
-// Form validation schema
-const paymentSchema = z.object({
+// Form validation schema - conditional based on mode
+const createPaymentSchema = (isWriteOff: boolean) => z.object({
   date: z.string().min(1, 'Date is required'),
   amountInclGst: z.number().min(0.01, 'Amount must be greater than 0'),
-  paymentMethod: z.nativeEnum(PaymentMethod),
+  paymentMethod: isWriteOff ? z.string().optional() : z.nativeEnum(PaymentMethod),
   otherPaymentMethod: z.string().optional(),
   notes: z.string().optional(),
 });
-
-type PaymentFormData = z.infer<typeof paymentSchema>;
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -40,11 +37,16 @@ interface PaymentModalProps {
   mode: 'payment' | 'writeoff';
   invoiceId: string;
   outstandingAmount: number;
-  onSave?: (payment: InvoicePayment) => void;
+  onSave?: () => void;
 }
 
 export function PaymentModal({ isOpen, onClose, mode, invoiceId, outstandingAmount, onSave }: PaymentModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | undefined>();
+  const [isSaving, setIsSaving] = useState(false);
+  const isWriteOff = mode === 'writeoff';
+  
+  const paymentSchema = createPaymentSchema(isWriteOff);
+  type PaymentFormData = z.infer<typeof paymentSchema>;
 
   const form = useForm<PaymentFormData>({
     resolver: zodResolver(paymentSchema),
@@ -71,21 +73,28 @@ export function PaymentModal({ isOpen, onClose, mode, invoiceId, outstandingAmou
   }, [isOpen, outstandingAmount, form]);
 
   const onSubmit = async (data: PaymentFormData) => {
+    if (!invoiceId) return;
+    
+    setIsSaving(true);
     try {
-      const paymentData: InvoicePayment = {
-        id: Date.now().toString(),
+      const receiptData = {
+        receiptType: isWriteOff ? ReceiptType.InvoiceWriteOff : ReceiptType.InvoiceReceipt,
+        idInvoice: invoiceId,
         date: data.date,
-        amountExclGst: data.amountInclGst / 1.1, // Assuming 10% GST
         amountInclGst: data.amountInclGst,
-        amountGst: data.amountInclGst - (data.amountInclGst / 1.1),
-        paymentMethod: data.paymentMethod,
-        notes: data.notes || '',
+        paymentMethod: isWriteOff ? undefined : data.paymentMethod as PaymentMethod,
+        otherPaymentMethod: paymentMethod === PaymentMethod.Other ? data.otherPaymentMethod : undefined,
+        notes: data.notes || undefined,
       };
 
-      onSave?.(paymentData);
+      await receiptsApi.createReceipt(receiptData);
+      onSave?.();
       onClose();
     } catch (error) {
       console.error('Payment save error:', error);
+      // Error will be displayed via form state or can add toast notification
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -95,8 +104,6 @@ export function PaymentModal({ isOpen, onClose, mode, invoiceId, outstandingAmou
       currency: 'AUD',
     }).format(amount);
   };
-
-  const isWriteOff = mode === 'writeoff';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -127,6 +134,7 @@ export function PaymentModal({ isOpen, onClose, mode, invoiceId, outstandingAmou
                 value={form.watch('date')}
                 onChange={(value) => form.setValue('date', value)}
                 error={form.formState.errors.date}
+                disabled={isSaving}
               />
 
               <div>
@@ -142,6 +150,7 @@ export function PaymentModal({ isOpen, onClose, mode, invoiceId, outstandingAmou
                     min="0.01"
                     max={outstandingAmount}
                     className="pl-10"
+                    disabled={isSaving}
                     {...form.register('amountInclGst', { valueAsNumber: true })}
                   />
                 </div>
@@ -164,6 +173,7 @@ export function PaymentModal({ isOpen, onClose, mode, invoiceId, outstandingAmou
                       form.setValue('paymentMethod', value as PaymentMethod);
                       setPaymentMethod(value as PaymentMethod);
                     }}
+                    disabled={isSaving}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select payment method" />
@@ -186,6 +196,7 @@ export function PaymentModal({ isOpen, onClose, mode, invoiceId, outstandingAmou
                       id="otherPaymentMethod"
                       {...form.register('otherPaymentMethod')}
                       placeholder="e.g., Cheque, Credit Card"
+                      disabled={isSaving}
                     />
                     {form.formState.errors.otherPaymentMethod && (
                       <p className="text-red-500 text-sm mt-1">{form.formState.errors.otherPaymentMethod.message}</p>
@@ -202,6 +213,7 @@ export function PaymentModal({ isOpen, onClose, mode, invoiceId, outstandingAmou
                 {...form.register('notes')}
                 placeholder={isWriteOff ? "Reason for write-off..." : "Payment notes..."}
                 rows={3}
+                disabled={isSaving}
               />
             </div>
           </div>
@@ -224,15 +236,23 @@ export function PaymentModal({ isOpen, onClose, mode, invoiceId, outstandingAmou
         </form>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
           <Button 
             type="submit" 
             onClick={form.handleSubmit(onSubmit)}
+            disabled={isSaving}
             className={isWriteOff ? 'bg-red-600 hover:bg-red-700' : ''}
           >
-            {isWriteOff ? 'Write Off' : 'Record Payment'}
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {isWriteOff ? 'Writing Off...' : 'Saving...'}
+              </>
+            ) : (
+              isWriteOff ? 'Write Off' : 'Record Payment'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
