@@ -114,6 +114,106 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
     onEditShift(shift);
   };
 
+  const getAssigneeInitials = (name?: string) => {
+    if (!name) return '—';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const renderShiftCard = (shift: Shift) => {
+    const startTime = formatShiftDateTime(shift.startDate);
+    const endTime = formatShiftDateTime(shift.endDate);
+    const borderColor = getStatusBorderColor(shift.shiftStatus, shift.startDate);
+    return (
+      <Card
+        key={shift.id}
+        className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4"
+        style={{ borderLeftColor: borderColor }}
+        onClick={() => handleViewShift(shift)}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-medium text-gray-900 truncate">
+                {startTime.time} - {endTime.time} ({formatShiftDuration(shift.duration)})
+              </span>
+              <span className="hidden sm:inline">
+                <Badge variant={getShiftStatusBadgeVariant(shift.shiftStatus)}>
+                  {shift.shiftStatus}
+                </Badge>
+              </span>
+            </div>
+            <div className="text-base font-semibold text-gray-900 mb-1">
+              {shift.contact?.fullName || shift.client || 'No contact'}
+            </div>
+            <div className="hidden sm:block">
+              {shift.summary && (
+                <div className="text-sm text-gray-600 mb-2">{shift.summary}</div>
+              )}
+            </div>
+            <div className="hidden sm:flex flex-wrap items-center gap-3 text-sm text-gray-600">
+              {shift.assignee && (
+                <div className="flex items-center gap-1">
+                  <User className="h-4 w-4" />
+                  <span>{shift.assignee.fullName || shift.assignee.name}</span>
+                </div>
+              )}
+              {shift.location && (
+                <div className="flex items-center gap-1">
+                  <MapPin className="h-4 w-4" />
+                  <span className="truncate max-w-[200px]">{shift.location}</span>
+                </div>
+              )}
+            </div>
+            <div className="hidden sm:block">
+              {(shift.category || shift.totalExclGst) && (
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  {shift.category && (
+                    <Badge variant="outline" className="text-xs">{shift.category}</Badge>
+                  )}
+                  {shift.totalExclGst && (
+                    <Badge variant="outline" className="text-xs">${Number(shift.totalExclGst).toFixed(2)} excl. GST</Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="sm:hidden flex-shrink-0 w-9 h-9 rounded-full border-2 border-green-500 text-green-600 font-bold text-xs flex items-center justify-center">
+              {getAssigneeInitials(shift.assignee?.fullName || shift.assignee?.name)}
+            </div>
+            <div className="hidden sm:flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              {shift.shiftStatus !== ShiftStatus.Completed && shift.shiftStatus !== ShiftStatus.Cancelled && (
+                <Button variant="ghost" size="sm" onClick={() => onCompleteShift(shift)} title="Complete shift" className="text-green-600 hover:text-green-700">
+                  <CheckCircle className="h-4 w-4" />
+                </Button>
+              )}
+              {shift.shiftStatus !== ShiftStatus.Cancelled && shift.shiftStatus !== ShiftStatus.Completed && onCancelShift && (
+                <Button variant="ghost" size="sm" onClick={() => onCancelShift(shift)} title="Cancel shift" className="text-orange-600 hover:text-orange-700">
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              )}
+              {onNotifyShift && (
+                <Button variant="ghost" size="sm" onClick={() => onNotifyShift(shift)} title="Notify shift" className="text-blue-600 hover:text-blue-700">
+                  <Send className="h-4 w-4" />
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => handleEditShift(shift)} title="Edit shift">
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => onDuplicateShift(shift)} title="Duplicate shift">
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => handleDeleteShift(shift.id)} title="Delete shift" className="text-red-600 hover:text-red-700">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  };
 
 
   if (loading) {
@@ -286,6 +386,102 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
             const hasNoShifts = dateShifts.length === 0;
             const isToday = dateHeader.isToday;
 
+            // Prebuild first shift card (simplified on mobile)
+            let firstShiftCard: React.ReactNode = null;
+            if (firstShift) {
+              const startTime = formatShiftDateTime(firstShift.startDate);
+              const endTime = formatShiftDateTime(firstShift.endDate);
+              const borderColor = getStatusBorderColor(firstShift.shiftStatus, firstShift.startDate);
+              firstShiftCard = (
+                <Card
+                  key={firstShift.id}
+                  className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4"
+                  style={{ borderLeftColor: borderColor }}
+                  onClick={() => handleViewShift(firstShift)}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-medium text-gray-900 truncate">
+                          {startTime.time} - {endTime.time} ({formatShiftDuration(firstShift.duration)})
+                        </span>
+                        <span className="hidden sm:inline">
+                          <Badge variant={getShiftStatusBadgeVariant(firstShift.shiftStatus)}>
+                            {firstShift.shiftStatus}
+                          </Badge>
+                        </span>
+                      </div>
+                      <div className="text-base font-semibold text-gray-900 mb-1">
+                        {firstShift.contact?.fullName || firstShift.client || 'No contact'}
+                      </div>
+                      <div className="hidden sm:block">
+                        {firstShift.summary && (
+                          <div className="text-sm text-gray-600 mb-2">{firstShift.summary}</div>
+                        )}
+                      </div>
+                      <div className="hidden sm:flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                        {firstShift.assignee && (
+                          <div className="flex items-center gap-1">
+                            <User className="h-4 w-4" />
+                            <span>{firstShift.assignee.fullName || firstShift.assignee.name}</span>
+                          </div>
+                        )}
+                        {firstShift.location && (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4" />
+                            <span className="truncate max-w-[200px]">{firstShift.location}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="hidden sm:block">
+                        {(firstShift.category || firstShift.totalExclGst) && (
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
+                            {firstShift.category && (
+                              <Badge variant="outline" className="text-xs">{firstShift.category}</Badge>
+                            )}
+                            {firstShift.totalExclGst && (
+                              <Badge variant="outline" className="text-xs">${Number(firstShift.totalExclGst).toFixed(2)} excl. GST</Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="sm:hidden flex-shrink-0 w-9 h-9 rounded-full border-2 border-green-500 text-green-600 font-bold text-xs flex items-center justify-center">
+                        {getAssigneeInitials(firstShift.assignee?.fullName || firstShift.assignee?.name)}
+                      </div>
+                      <div className="hidden sm:flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        {firstShift.shiftStatus !== ShiftStatus.Completed && firstShift.shiftStatus !== ShiftStatus.Cancelled && (
+                          <Button variant="ghost" size="sm" onClick={() => onCompleteShift(firstShift)} title="Complete shift" className="text-green-600 hover:text-green-700">
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {firstShift.shiftStatus !== ShiftStatus.Cancelled && firstShift.shiftStatus !== ShiftStatus.Completed && onCancelShift && (
+                          <Button variant="ghost" size="sm" onClick={() => onCancelShift(firstShift)} title="Cancel shift" className="text-orange-600 hover:text-orange-700">
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {onNotifyShift && (
+                          <Button variant="ghost" size="sm" onClick={() => onNotifyShift(firstShift)} title="Notify shift" className="text-blue-600 hover:text-blue-700">
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => handleEditShift(firstShift)} title="Edit shift">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => onDuplicateShift(firstShift)} title="Duplicate shift">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteShift(firstShift.id)} title="Delete shift" className="text-red-600 hover:text-red-700">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              );
+            }
+
             return (
               <div key={dateKey} className="space-y-2" ref={isToday ? todayDateRef : null}>
                 {/* Date Header with First Shift or Empty State */}
@@ -317,274 +513,16 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
                           {dateHeader.isToday ? 'No shifts for today yet.' : 'No shifts for this date.'}
                         </p>
                       </Card>
-                    ) : firstShift ? (() => {
-                        const startTime = formatShiftDateTime(firstShift.startDate);
-                        const endTime = formatShiftDateTime(firstShift.endDate);
-                        const borderColor = getStatusBorderColor(firstShift.shiftStatus, firstShift.startDate);
-                        
-                        return (
-                          <Card
-                            key={firstShift.id}
-                            className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4"
-                            style={{ borderLeftColor: borderColor }}
-                            onClick={() => handleViewShift(firstShift)}
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <Badge variant={getShiftStatusBadgeVariant(firstShift.shiftStatus)}>
-                                    {firstShift.shiftStatus}
-                                  </Badge>
-                                  <span className="text-sm font-medium text-gray-900 truncate">
-                                    {startTime.time} - {endTime.time} ({formatShiftDuration(firstShift.duration)})
-                                  </span>
-                                </div>
-                                
-                                <div className="text-base font-semibold text-gray-900 mb-1">
-                                  {firstShift.contact?.fullName || firstShift.client || 'No contact'}
-                                </div>
-                                
-                                {firstShift.summary && (
-                                  <div className="text-sm text-gray-600 mb-2">
-                                    {firstShift.summary}
-                                  </div>
-                                )}
-
-                                <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-                                  {firstShift.assignee && (
-                                    <div className="flex items-center gap-1">
-                                      <User className="h-4 w-4" />
-                                      <span>{firstShift.assignee.fullName || firstShift.assignee.name}</span>
-                                    </div>
-                                  )}
-                                  {firstShift.location && (
-                                    <div className="flex items-center gap-1">
-                                      <MapPin className="h-4 w-4" />
-                                      <span className="truncate max-w-[200px]">{firstShift.location}</span>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {(firstShift.category || firstShift.totalExclGst) && (
-                                  <div className="mt-2 flex items-center gap-2 flex-wrap">
-                                    {firstShift.category && (
-                                      <Badge variant="outline" className="text-xs">
-                                        {firstShift.category}
-                                      </Badge>
-                                    )}
-                                    {firstShift.totalExclGst && (
-                                      <Badge variant="outline" className="text-xs">
-                                        ${Number(firstShift.totalExclGst).toFixed(2)} excl. GST
-                                      </Badge>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              <div 
-                                className="flex items-center gap-1"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {firstShift.shiftStatus !== ShiftStatus.Completed && firstShift.shiftStatus !== ShiftStatus.Cancelled && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => onCompleteShift(firstShift)}
-                                    title="Complete shift"
-                                    className="text-green-600 hover:text-green-700"
-                                  >
-                                    <CheckCircle className="h-4 w-4" />
-                                  </Button>
-                                )}
-                                {firstShift.shiftStatus !== ShiftStatus.Cancelled && firstShift.shiftStatus !== ShiftStatus.Completed && onCancelShift && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => onCancelShift(firstShift)}
-                                    title="Cancel shift"
-                                    className="text-orange-600 hover:text-orange-700"
-                                  >
-                                    <XCircle className="h-4 w-4" />
-                                  </Button>
-                                )}
-                                {onNotifyShift && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => onNotifyShift(firstShift)}
-                                    title="Notify shift"
-                                    className="text-blue-600 hover:text-blue-700"
-                                  >
-                                    <Send className="h-4 w-4" />
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEditShift(firstShift)}
-                                  title="Edit shift"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => onDuplicateShift(firstShift)}
-                                  title="Duplicate shift"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteShift(firstShift.id)}
-                                  title="Delete shift"
-                                  className="text-red-600 hover:text-red-700"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </Card>
-                        );
-                      })() : null}
+                    ) : firstShift ? (
+                      firstShiftCard
+                    ) : null}
                   </div>
                 </div>
 
                 {/* Remaining Shifts for this date */}
                 {restShifts.length > 0 && (
                   <div className="space-y-2 ml-[100px]">
-                    {restShifts.map((shift) => {
-                    const startTime = formatShiftDateTime(shift.startDate);
-                    const endTime = formatShiftDateTime(shift.endDate);
-                    const borderColor = getStatusBorderColor(shift.shiftStatus, shift.startDate);
-                    
-                    return (
-                      <Card
-                        key={shift.id}
-                        className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4"
-                        style={{ borderLeftColor: borderColor }}
-                        onClick={() => handleViewShift(shift)}
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 mb-2">
-                              <Badge variant={getShiftStatusBadgeVariant(shift.shiftStatus)}>
-                                {shift.shiftStatus}
-                              </Badge>
-                              <span className="text-sm font-medium text-gray-900 truncate">
-                                {startTime.time} - {endTime.time} ({formatShiftDuration(shift.duration)})
-                              </span>
-                            </div>
-                            
-                            <div className="text-base font-semibold text-gray-900 mb-1">
-                              {shift.contact?.fullName || shift.client || 'No contact'}
-                            </div>
-                            
-                            {shift.summary && (
-                              <div className="text-sm text-gray-600 mb-2">
-                                {shift.summary}
-                              </div>
-                            )}
-
-                            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-                              {shift.assignee && (
-                                <div className="flex items-center gap-1">
-                                  <User className="h-4 w-4" />
-                                  <span>{shift.assignee.fullName || shift.assignee.name}</span>
-                                </div>
-                              )}
-                              {shift.location && (
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="h-4 w-4" />
-                                  <span className="truncate max-w-[200px]">{shift.location}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {(shift.category || shift.totalExclGst) && (
-                              <div className="mt-2 flex items-center gap-2 flex-wrap">
-                                {shift.category && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {shift.category}
-                                  </Badge>
-                                )}
-                                {shift.totalExclGst && (
-                                  <Badge variant="outline" className="text-xs">
-                                    ${Number(shift.totalExclGst).toFixed(2)} excl. GST
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          <div 
-                            className="flex items-center gap-1"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {shift.shiftStatus !== ShiftStatus.Completed && shift.shiftStatus !== ShiftStatus.Cancelled && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => onCompleteShift(shift)}
-                                title="Complete shift"
-                                className="text-green-600 hover:text-green-700"
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {shift.shiftStatus !== ShiftStatus.Cancelled && shift.shiftStatus !== ShiftStatus.Completed && onCancelShift && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => onCancelShift(shift)}
-                                title="Cancel shift"
-                                className="text-orange-600 hover:text-orange-700"
-                              >
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {onNotifyShift && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => onNotifyShift(shift)}
-                                title="Notify shift"
-                                className="text-blue-600 hover:text-blue-700"
-                              >
-                                <Send className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditShift(shift)}
-                              title="Edit shift"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onDuplicateShift(shift)}
-                              title="Duplicate shift"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteShift(shift.id)}
-                              title="Delete shift"
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </Card>
-                    );
-                  })}
+                    {restShifts.map(renderShiftCard)}
                   </div>
                 )}
               </div>

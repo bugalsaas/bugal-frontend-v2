@@ -33,6 +33,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { navigationItems, MainLayoutProps, PageHeaderConfig } from '@/lib/navigation-config';
 import { colors } from '@/lib/design-tokens';
 import { OrganizationSwitcher } from './organization-switcher';
+import MobileBottomNav from './mobile-bottom-nav';
+import { mobileNavItems, filterMobileNavItems } from '@/lib/navigation/mobile-nav-items';
 
 export function MainLayout({ 
   children, 
@@ -347,7 +349,7 @@ export function MainLayout({
         </header>
         
         {/* Mobile Content */}
-        <main className="flex-1 p-4 pb-20">
+        <main className="flex-1 p-4 pb-[96px]" style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom))' }}>
           <div className="space-y-4">
             {/* Mobile Search and Actions */}
             {(headerConfig.showSearch || headerConfig.showFilters || headerConfig.showAddButton || headerConfig.customFilterComponent) && (
@@ -391,27 +393,15 @@ export function MainLayout({
         </main>
         
         {/* Mobile Bottom Navigation */}
-        <nav className="bg-white border-t border-gray-200 px-4 py-2 sticky bottom-0 z-10">
-          <div className="flex items-center justify-around">
-            {updatedNavigationItems.map((item) => (
-              <a
-                key={item.id}
-                href={item.href}
-                className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-lg ${
-                  item.isActive ? 'text-blue-600' : 'text-gray-500'
-                }`}
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="text-xs font-medium">{item.label}</span>
-                {item.badge && (
-                  <span className="bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center -mt-1 -mr-1">
-                    {item.badge}
-                  </span>
-                )}
-              </a>
-            ))}
-          </div>
-        </nav>
+        <MobileBottomNav
+          items={filterMobileNavItems(
+            mobileNavItems.map((i) => ({
+              ...i,
+              // reuse icons already sized in config
+            })),
+            { isAdmin: effectiveIsAdmin }
+          )}
+        />
       </div>
     </div>
   );
