@@ -13,7 +13,7 @@ export interface MobileNavConfigItem {
 export const mobileNavItems: MobileNavConfigItem[] = [
   { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: Home },
   { id: 'contacts', label: 'Contacts', href: '/contacts', icon: Users },
-  { id: 'agreements', label: 'Service agreements', href: '/agreements', icon: FileText },
+  { id: 'agreements', label: 'Agreements', href: '/agreements', icon: FileText },
   { id: 'rates', label: 'Rates', href: '/rates', icon: DollarSign },
   { id: 'shifts', label: 'Shifts', href: '/shifts', icon: CalendarDays },
   { id: 'invoices', label: 'Invoices', href: '/invoices', icon: FileText },

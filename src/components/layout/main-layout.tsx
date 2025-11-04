@@ -316,27 +316,38 @@ export function MainLayout({
       {/* Mobile Layout */}
       <div className="md:hidden flex flex-col min-h-screen">
         {/* Mobile Header */}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+        <header 
+          className="border-b px-4 py-3 sticky top-0 z-10"
+          style={{ 
+            backgroundColor: 'rgb(9, 28, 44)',
+            borderColor: 'rgba(255, 255, 255, 0.1)'
+          }}
+        >
+          <div className="flex items-center relative">
+            {/* Left: Logo */}
+            <div className="flex-shrink-0 w-10">
               <Image
                 src="/logo-color.png"
                 alt="Bugal Logo"
                 width={40}
                 height={40}
-                className="object-contain"
+                className="object-contain brightness-0 invert"
                 priority
-                style={{ width: 'auto', height: 'auto' }}
+                style={{ width: 'auto', height: 'auto', filter: 'brightness(0) invert(1)' }}
               />
-              <h1 className="text-lg font-semibold text-gray-900">{headerConfig.title}</h1>
             </div>
-            <div className="flex items-center space-x-2">
+            {/* Center: Title */}
+            <div className="flex-1 flex justify-center absolute left-0 right-0 pointer-events-none">
+              <h1 className="text-lg font-semibold text-white pointer-events-auto">{headerConfig.title}</h1>
+            </div>
+            {/* Right: Icons */}
+            <div className="flex items-center space-x-2 flex-shrink-0 ml-auto">
               {headerConfig.showSearch && (
-                <button className="p-2 text-gray-500">
+                <button className="p-2 text-white hover:opacity-80 transition-opacity">
                   <Search className="h-5 w-5" />
                 </button>
               )}
-              <button className="p-2 text-gray-500 relative">
+              <button className="p-2 text-white hover:opacity-80 transition-opacity relative">
                 <Bell className="h-5 w-5" />
                 {notifications > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">

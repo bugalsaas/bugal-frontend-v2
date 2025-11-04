@@ -48,8 +48,19 @@ export function MobileBottomNav({ items }: MobileBottomNavProps) {
                   aria-label={item.ariaLabel || item.label}
                   aria-current={active ? 'page' : undefined}
                   className={`group relative flex flex-col items-center justify-center gap-1 px-3 py-2 min-w-[72px] rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 ${
-                    active ? 'text-blue-600' : 'text-gray-600 hover:text-gray-800'
+                    active ? 'text-blue-600' : ''
                   }`}
+                  style={active ? {} : { color: 'rgb(9, 28, 44)' }}
+                  onMouseEnter={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.color = 'rgb(15, 45, 68)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.color = 'rgb(9, 28, 44)';
+                    }
+                  }}
                 >
                   <Icon className={`h-5 w-5 ${active ? '' : ''}`} />
                   <span className="text-[11px] font-medium leading-tight">{item.label}</span>
