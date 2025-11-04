@@ -12,6 +12,7 @@ import { ReportBreakdown } from '@/components/reports/report-breakdown';
 import { DescriptionItem } from '@/components/reports/description-item';
 import { useReportTax } from '@/hooks/use-reports';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { format as formatDateFns } from 'date-fns';
 import { 
   FileText, 
   Receipt, 
@@ -43,8 +44,8 @@ export default function TaxReportPage() {
   const handleGenerate = async (values: TaxReportFormValues) => {
     try {
       await generate({
-        startDate: values.startDate.toISOString(),
-        endDate: values.endDate.toISOString(),
+        startDate: formatDateFns(values.startDate, 'yyyy-MM-dd'),
+        endDate: formatDateFns(values.endDate, 'yyyy-MM-dd'),
       });
     } catch (error) {
       console.error('Failed to generate report:', error);

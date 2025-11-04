@@ -29,13 +29,14 @@ export function DateRangeInput({
   const { user } = useAuth();
   
   // Build organization object for fiscal year calculation
+  // Use organization's country fiscal year settings if available, otherwise default to Australian fiscal year (July 1 - June 30)
+  const organizationCountry = (user?.organization as any)?.country;
   const organization: OrganizationForFiscalYear = {
-    country: user?.organization ? {
-      // Note: country info might need to be fetched separately if not in user object
-      // For now, defaulting to Australian fiscal year (July 1)
-      fyStartMonth: 7,
-      fyStartDay: 1,
-    } : undefined,
+    country: {
+      // Use organization's country fiscal year if available, otherwise default to Australian fiscal year (July 1)
+      fyStartMonth: organizationCountry?.fyStartMonth ?? 7, // July = 7
+      fyStartDay: organizationCountry?.fyStartDay ?? 1, // Day 1
+    },
     timezone: user?.organization?.timezone,
   };
 

@@ -18,6 +18,7 @@ import { formatCurrency, formatDate, formatTime } from '@/lib/utils';
 import { getDurationDisplay } from '@/lib/utils/duration';
 import { getTimezoneDisplay } from '@/lib/utils/timezone';
 import { getShiftStatusColor } from '@/lib/utils/shift-helpers';
+import { format as formatDateFns } from 'date-fns';
 import { 
   FileText, 
   Wallet, 
@@ -54,8 +55,8 @@ export default function ShiftsReportPage() {
   const handleGenerate = async (values: ShiftReportFormValues) => {
     try {
       await generate({
-        startDate: values.startDate.toISOString(),
-        endDate: values.endDate.toISOString(),
+        startDate: formatDateFns(values.startDate, 'yyyy-MM-dd'),
+        endDate: formatDateFns(values.endDate, 'yyyy-MM-dd'),
         idAssignee: values.idAssignee,
         idContact: values.idContact,
       });

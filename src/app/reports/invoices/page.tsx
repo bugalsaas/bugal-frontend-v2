@@ -14,6 +14,7 @@ import { DescriptionItem } from '@/components/reports/description-item';
 import { useReportInvoice } from '@/hooks/use-reports';
 import { useContacts } from '@/hooks/use-contacts';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { format as formatDateFns } from 'date-fns';
 import { 
   FileText, 
   DollarSign, 
@@ -51,8 +52,8 @@ export default function InvoicesReportPage() {
   const handleGenerate = async (values: InvoiceReportFormValues) => {
     try {
       await generate({
-        startDate: values.startDate.toISOString(),
-        endDate: values.endDate.toISOString(),
+        startDate: formatDateFns(values.startDate, 'yyyy-MM-dd'),
+        endDate: formatDateFns(values.endDate, 'yyyy-MM-dd'),
         idContact: values.idContact,
       });
     } catch (error) {
@@ -176,10 +177,8 @@ export default function InvoicesReportPage() {
             renderItem={(item) => (
               <>
                 <DescriptionItem title="Contact" content={item.contact.fullName} />
-                <DescriptionItem title="Invoice Date" content={formatDate(new Date(item.date))} />
+                <DescriptionItem title="Date" content={formatDate(new Date(item.date))} />
                 <DescriptionItem title="Due Date" content={formatDate(new Date(item.dueDate))} />
-                <DescriptionItem title="Amount Excl. GST" content={formatCurrency(item.totalInclGst - item.totalGst)} />
-                <DescriptionItem title="GST" content={formatCurrency(item.totalGst)} />
               </>
             )}
           />
@@ -195,10 +194,8 @@ export default function InvoicesReportPage() {
             renderItem={(item) => (
               <>
                 <DescriptionItem title="Contact" content={item.contact.fullName} />
-                <DescriptionItem title="Invoice Date" content={formatDate(new Date(item.date))} />
+                <DescriptionItem title="Date" content={formatDate(new Date(item.date))} />
                 <DescriptionItem title="Due Date" content={formatDate(new Date(item.dueDate))} />
-                <DescriptionItem title="Amount Excl. GST" content={formatCurrency(item.totalInclGst - item.totalGst)} />
-                <DescriptionItem title="GST" content={formatCurrency(item.totalGst)} />
               </>
             )}
           />
@@ -214,10 +211,8 @@ export default function InvoicesReportPage() {
             renderItem={(item) => (
               <>
                 <DescriptionItem title="Contact" content={item.contact.fullName} />
-                <DescriptionItem title="Invoice Date" content={formatDate(new Date(item.date))} />
+                <DescriptionItem title="Date" content={formatDate(new Date(item.date))} />
                 <DescriptionItem title="Due Date" content={formatDate(new Date(item.dueDate))} />
-                <DescriptionItem title="Amount Excl. GST" content={formatCurrency(item.totalInclGst - item.totalGst)} />
-                <DescriptionItem title="GST" content={formatCurrency(item.totalGst)} />
               </>
             )}
           />
@@ -233,10 +228,8 @@ export default function InvoicesReportPage() {
             renderItem={(item) => (
               <>
                 <DescriptionItem title="Contact" content={item.contact.fullName} />
-                <DescriptionItem title="Invoice Date" content={formatDate(new Date(item.date))} />
+                <DescriptionItem title="Date" content={formatDate(new Date(item.date))} />
                 <DescriptionItem title="Due Date" content={formatDate(new Date(item.dueDate))} />
-                <DescriptionItem title="Amount Excl. GST" content={formatCurrency(item.totalInclGst - item.totalGst)} />
-                <DescriptionItem title="GST" content={formatCurrency(item.totalGst)} />
               </>
             )}
           />

@@ -13,7 +13,10 @@ import { ReportBreakdown } from '@/components/reports/report-breakdown';
 import { DescriptionItem } from '@/components/reports/description-item';
 import { useReportIncident } from '@/hooks/use-reports';
 import { useContacts } from '@/hooks/use-contacts';
-import { formatDate } from '@/lib/utils';
+import { useIncidentActions } from '@/hooks/use-incidents';
+import { useAuth } from '@/contexts/auth-context';
+import { formatDate, formatDateTimeAt } from '@/lib/utils';
+import { format as formatDateFns } from 'date-fns';
 import { 
   FileText, 
   AlertTriangle, 
@@ -23,6 +26,7 @@ import {
   AlertCircle,
   Loader2,
   Info,
+  Trash2,
 } from 'lucide-react';
 
 const incidentReportSchema = z.object({
@@ -36,8 +40,13 @@ type IncidentReportFormValues = z.infer<typeof incidentReportSchema>;
 export default function IncidentsReportPage() {
   const { loading, obj, generate } = useReportIncident();
   const { data: contacts } = useContacts();
+  const { user } = useAuth();
+  const { deleteIncident, isDeleting } = useIncidentActions();
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
+
+  // Check permission for delete
+  const hasPermissionDelete = user?.scopes?.includes('incidents:delete') ?? false;
 
   const form = useForm<IncidentReportFormValues>({
     resolver: zodResolver(incidentReportSchema),
@@ -51,12 +60,26 @@ export default function IncidentsReportPage() {
   const handleGenerate = async (values: IncidentReportFormValues) => {
     try {
       await generate({
-        startDate: values.startDate.toISOString(),
-        endDate: values.endDate.toISOString(),
+        startDate: formatDateFns(values.startDate, 'yyyy-MM-dd'),
+        endDate: formatDateFns(values.endDate, 'yyyy-MM-dd'),
         idContact: values.idContact,
       });
     } catch (error) {
       console.error('Failed to generate report:', error);
+    }
+  };
+
+  const handleDeleteClick = async (event: React.MouseEvent<HTMLElement, MouseEvent>, item: { id: string }) => {
+    event.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this incident?')) {
+      try {
+        await deleteIncident(item.id);
+        // Refresh the report after deletion
+        const formValues = form.getValues();
+        await handleGenerate(formValues);
+      } catch (error) {
+        console.error('Failed to delete incident:', error);
+      }
     }
   };
 
@@ -158,14 +181,30 @@ export default function IncidentsReportPage() {
             title={`${obj.summary.count} Incident${obj.summary.count > 1 ? 's' : ''}`}
             data={obj.data}
             renderLeft={(item) => item.code}
-            renderRight={(item) => formatDate(new Date(item.date))}
+            renderRight={(item) => (
+              <div className="flex items-center space-x-2">
+                <span>{formatDate(new Date(item.date))}</span>
+                {hasPermissionDelete && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={(e) => handleDeleteClick(e, item)}
+                    disabled={isDeleting}
+                    title="Delete incident"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-600" />
+                  </Button>
+                )}
+              </div>
+            )}
             renderItem={(item) => (
               <>
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-sm font-semibold text-gray-900 mb-2">General Information</h4>
                     <DescriptionItem title="Contact" content={item.contact.fullName} />
-                    <DescriptionItem title="Incident date and time" content={formatDate(new Date(item.date))} />
+                    <DescriptionItem title="Incident date and time" content={formatDateTimeAt(new Date(item.date))} />
                     <DescriptionItem title="Location" content={item.location} />
                   </div>
 
@@ -231,7 +270,7 @@ export default function IncidentsReportPage() {
                     {item.supervisorReportDate && (
                       <DescriptionItem 
                         title="Date and time reported" 
-                        content={formatDate(new Date(item.supervisorReportDate))} 
+                        content={formatDateTimeAt(new Date(item.supervisorReportDate))} 
                       />
                     )}
                     <DescriptionItem 
@@ -259,7 +298,7 @@ export default function IncidentsReportPage() {
                     {item.dateNDISReport && (
                       <DescriptionItem 
                         title="Date and time reported" 
-                        content={formatDate(new Date(item.dateNDISReport))} 
+                        content={formatDateTimeAt(new Date(item.dateNDISReport))} 
                       />
                     )}
                     <DescriptionItem title="Reported by" content={item.reportedBy.fullName} />

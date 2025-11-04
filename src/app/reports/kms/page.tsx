@@ -15,6 +15,7 @@ import { useReportKm } from '@/hooks/use-reports';
 import { useContacts } from '@/hooks/use-contacts';
 import { UserSelector } from '@/components/ui/user-selector';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { format as formatDateFns } from 'date-fns';
 import { 
   FileText, 
   Car, 
@@ -50,8 +51,8 @@ export default function KmsReportPage() {
   const handleGenerate = async (values: KmsReportFormValues) => {
     try {
       await generate({
-        startDate: values.startDate.toISOString(),
-        endDate: values.endDate.toISOString(),
+        startDate: formatDateFns(values.startDate, 'yyyy-MM-dd'),
+        endDate: formatDateFns(values.endDate, 'yyyy-MM-dd'),
         idAssignee: values.idAssignee,
         idContact: values.idContact,
       });

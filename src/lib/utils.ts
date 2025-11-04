@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { format } from "date-fns"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -44,4 +45,21 @@ export function formatTime(date: Date | string | undefined | null): string {
     minute: '2-digit',
     hour12: true,
   }).format(dateObj)
+}
+
+/**
+ * Format date and time in the format: "ddd, D MMM YYYY at h:mm a"
+ * Matches the old frontend DATETIME_FORMAT_AT format
+ */
+export function formatDateTimeAt(date: Date | string | undefined | null): string {
+  if (!date) return '-';
+  
+  const dateObj = date instanceof Date ? date : new Date(date);
+  
+  // Check if date is valid
+  if (isNaN(dateObj.getTime())) {
+    return '-';
+  }
+  
+  return format(dateObj, 'EEE, d MMM yyyy \'at\' h:mm a');
 }

@@ -1,4 +1,4 @@
-import { startOfDay, setMonth, setDate, addYears, subYears, startOfMonth, endOfMonth } from 'date-fns';
+import { startOfDay, addYears, subYears, startOfMonth, endOfMonth } from 'date-fns';
 
 /**
  * Organization with country information for fiscal year calculation
@@ -33,7 +33,7 @@ export function getCurrentFYDates(organization: OrganizationForFiscalYear) {
   const fyYear = currentMonth >= fyStartMonth ? currentYear : currentYear - 1;
   
   // Calculate fiscal year start date (fyStartMonth is 1-based, so subtract 1 for Date constructor)
-  const fyStart = startOfDay(setDate(setMonth(new Date(fyYear, fyStartMonth - 1, 1), fyStartDay), fyStartDay));
+  const fyStart = startOfDay(new Date(fyYear, fyStartMonth - 1, fyStartDay));
   
   // Calculate fiscal year end date (1 millisecond before next FY start)
   const nextFYStart = addYears(fyStart, 1);
