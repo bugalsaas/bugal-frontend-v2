@@ -5,7 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerDescription } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -81,6 +83,7 @@ interface ShiftModalProps {
 }
 
 export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [activeTab, setActiveTab] = useState('details');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -328,46 +331,6 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
 
   const renderDetailsTab = () => (
     <div className="space-y-6">
-      {/* Basic Information */}
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="summary">Summary *</Label>
-            <Input
-              id="summary"
-              {...form.register('summary')}
-              disabled={isReadOnly}
-              placeholder="Brief description of the shift"
-            />
-            {form.formState.errors.summary && (
-              <p className="text-red-500 text-sm mt-1">{form.formState.errors.summary.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="category">Category</Label>
-            <Select
-              value={form.watch('category') || ShiftCategory.AssistanceDailyLife}
-              onValueChange={(value) => form.setValue('category', value)}
-              disabled={isReadOnly}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ShiftCategory.AssistanceDailyLife}>Assistance with daily life</SelectItem>
-                <SelectItem value={ShiftCategory.AssistanceSocialCommunity}>Assistance with social and community participation</SelectItem>
-                <SelectItem value={ShiftCategory.Transport}>Transport</SelectItem>
-                <SelectItem value={ShiftCategory.SupportCoordination}>Support Coordination</SelectItem>
-                <SelectItem value={ShiftCategory.IncreasedSocialcommunity}>Increased social and community participation</SelectItem>
-                <SelectItem value={ShiftCategory.FindingKeepingJob}>Finding and keeping a job</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
       {/* Contact and Assignee */}
       <div>
         <h3 className="text-lg font-semibold mb-4">Contact & Assignee</h3>
@@ -413,6 +376,46 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
               )}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Basic Information */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="summary">Summary *</Label>
+            <Input
+              id="summary"
+              {...form.register('summary')}
+              disabled={isReadOnly}
+              placeholder="Brief description of the shift"
+            />
+            {form.formState.errors.summary && (
+              <p className="text-red-500 text-sm mt-1">{form.formState.errors.summary.message}</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="category">Category</Label>
+            <Select
+              value={form.watch('category') || ShiftCategory.AssistanceDailyLife}
+              onValueChange={(value) => form.setValue('category', value)}
+              disabled={isReadOnly}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ShiftCategory.AssistanceDailyLife}>Assistance with daily life</SelectItem>
+                <SelectItem value={ShiftCategory.AssistanceSocialCommunity}>Assistance with social and community participation</SelectItem>
+                <SelectItem value={ShiftCategory.Transport}>Transport</SelectItem>
+                <SelectItem value={ShiftCategory.SupportCoordination}>Support Coordination</SelectItem>
+                <SelectItem value={ShiftCategory.IncreasedSocialcommunity}>Increased social and community participation</SelectItem>
+                <SelectItem value={ShiftCategory.FindingKeepingJob}>Finding and keeping a job</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -756,60 +759,97 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
   };
 
   const shouldShowLoading = isLoadingShift && (mode === 'edit' || mode === 'view' || mode === 'duplicate');
+  const shouldUseDrawer = !isDesktop;
 
   if (!isOpen) {
     return null;
   }
 
+  const modalTitle = getModalTitle();
+  const modalDescription = mode === 'view' ? 'View shift details' : mode === 'edit' ? 'Edit shift information' : mode === 'duplicate' ? 'Duplicate this shift' : mode === 'complete' ? 'Complete this shift' : 'Create a new shift';
+
+  // Render content
+  const renderContent = () => {
+    if (shouldShowLoading) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            <p className="text-gray-600">Loading shift details...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (isReadOnly) {
+      return renderViewMode();
+    }
+
+    return (
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
+            <TabsTrigger value="attachments">Attachments ({attachments.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="details">{renderDetailsTab()}</TabsContent>
+          <TabsContent value="expenses">{renderExpensesTab()}</TabsContent>
+          <TabsContent value="attachments">{renderAttachmentsTab()}</TabsContent>
+        </Tabs>
+      </form>
+    );
+  };
+
+  // Render footer buttons
+  const renderFooterButtons = () => (
+    <>
+      <Button variant="outline" onClick={onClose} type="button">
+        {isReadOnly ? 'Close' : 'Cancel'}
+      </Button>
+      {!isReadOnly && !shouldShowLoading && (
+        <Button 
+          type="submit" 
+          onClick={form.handleSubmit(onSubmit)}
+          disabled={isSaving}
+        >
+          {isSaving ? 'Saving...' : mode === 'new' ? 'Create Shift' : 'Save Changes'}
+        </Button>
+      )}
+    </>
+  );
+
+  // Render Drawer for view mode on mobile
+  if (shouldUseDrawer) {
+    return (
+      <Drawer open={isOpen} onOpenChange={onClose}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader>
+            <DrawerTitle>{modalTitle}</DrawerTitle>
+            <DrawerDescription>{modalDescription}</DrawerDescription>
+          </DrawerHeader>
+          <div className="px-4 pb-4 overflow-y-auto flex-1 min-h-0">
+            {renderContent()}
+          </div>
+          <DrawerFooter className="flex-row justify-between gap-2 border-t pt-4 flex-wrap">
+            {renderFooterButtons()}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Render Dialog for all other cases
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto sm:max-w-4xl w-full sm:w-auto">
         <DialogHeader>
-          <DialogTitle>{getModalTitle()}</DialogTitle>
-          <DialogDescription>
-            {mode === 'view' ? 'View shift details' : mode === 'edit' ? 'Edit shift information' : mode === 'duplicate' ? 'Duplicate this shift' : mode === 'complete' ? 'Complete this shift' : 'Create a new shift'}
-          </DialogDescription>
+          <DialogTitle>{modalTitle}</DialogTitle>
+          <DialogDescription>{modalDescription}</DialogDescription>
         </DialogHeader>
-
-        {shouldShowLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="flex flex-col items-center space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              <p className="text-gray-600">Loading shift details...</p>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            {isReadOnly ? (
-              renderViewMode()
-            ) : (
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList>
-                  <TabsTrigger value="details">Details</TabsTrigger>
-                  <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
-                  <TabsTrigger value="attachments">Attachments ({attachments.length})</TabsTrigger>
-                </TabsList>
-                <TabsContent value="details">{renderDetailsTab()}</TabsContent>
-                <TabsContent value="expenses">{renderExpensesTab()}</TabsContent>
-                <TabsContent value="attachments">{renderAttachmentsTab()}</TabsContent>
-              </Tabs>
-            )}
-          </form>
-        )}
-
+        {renderContent()}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} type="button">
-            {isReadOnly ? 'Close' : 'Cancel'}
-          </Button>
-          {!isReadOnly && !shouldShowLoading && (
-            <Button 
-              type="submit" 
-              onClick={form.handleSubmit(onSubmit)}
-              disabled={isSaving}
-            >
-              {isSaving ? 'Saving...' : mode === 'new' ? 'Create Shift' : 'Save Changes'}
-            </Button>
-          )}
+          {renderFooterButtons()}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -5,7 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -106,6 +108,7 @@ interface ContactModalProps {
 }
 
 export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, onDelete }: ContactModalProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [currentStep, setCurrentStep] = useState(1);
   const [hasGuardian, setHasGuardian] = useState(false);
   const [hasOrganisationContact, setHasOrganisationContact] = useState(false);
@@ -870,6 +873,82 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
     </div>
   );
 
+  // Helper function to render footer buttons
+  const renderFooterButtons = () => (
+    <>
+      <div className="flex space-x-2">
+        {!isReadOnly && currentStep > 1 && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setCurrentStep(currentStep - 1)}
+          >
+            Previous
+          </Button>
+        )}
+      </div>
+
+      <div className="flex space-x-2">
+        {isReadOnly && onEdit && contact && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              onEdit(contact);
+            }}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+        )}
+        
+        {isReadOnly && onDelete && contact && (
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={async () => {
+              if (confirm('Are you sure you want to delete this contact?')) {
+                try {
+                  if (onDelete) {
+                    await onDelete(contact.id);
+                  } else {
+                    await deleteContact(contact.id);
+                  }
+                  onClose();
+                } catch (error) {
+                  console.error('Failed to delete contact:', error);
+                }
+              }
+            }}
+            disabled={isDeleting}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        )}
+        
+        <Button type="button" variant="outline" onClick={onClose}>
+          {isReadOnly ? 'Close' : 'Cancel'}
+        </Button>
+        
+        {!isReadOnly && currentStep < 3 && (
+          <Button
+            type="button"
+            onClick={() => setCurrentStep(currentStep + 1)}
+          >
+            Next
+          </Button>
+        )}
+        
+        {!isReadOnly && currentStep === 3 && (
+          <Button type="submit" disabled={isSaving}>
+            {isSaving ? 'Saving...' : mode === 'new' ? 'Create Contact' : 'Save Changes'}
+          </Button>
+        )}
+      </div>
+    </>
+  );
+
   const renderViewMode = () => {
     const anyContact = contact as any;
     const stateLabel = (() => {
@@ -1019,126 +1098,85 @@ export function ContactModal({ isOpen, onClose, mode, contact, onSave, onEdit, o
   );
   };
 
+  // Determine if we should use Drawer (all modes on mobile)
+  const shouldUseDrawer = !isDesktop;
+
+  // Render title
+  const modalTitle = mode === 'new' ? 'Add New Contact' : mode === 'edit' ? 'Edit Contact' : 'View Contact';
+
+  // Render content (without form wrapper for view mode)
+  const renderContent = () => {
+    if (isReadOnly) {
+      return renderViewMode();
+    }
+    
+    return (
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="space-y-6">
+          {/* Step indicator */}
+          <div className="flex items-center justify-center space-x-4">
+            {[1, 2, 3].map((step) => (
+              <div key={step} className="flex items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    step <= currentStep
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-600'
+                  }`}
+                >
+                  {step}
+                </div>
+                {step < 3 && (
+                  <div
+                    className={`w-16 h-1 mx-2 ${
+                      step < currentStep ? 'bg-blue-600' : 'bg-gray-200'
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Step content */}
+          {currentStep === 1 && renderStep1()}
+          {currentStep === 2 && renderStep2()}
+          {currentStep === 3 && renderStep3()}
+        </div>
+      </form>
+    );
+  };
+
+
+  // Render Drawer for view mode on mobile
+  if (shouldUseDrawer) {
+    return (
+      <Drawer open={isOpen} onOpenChange={onClose}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader>
+            <DrawerTitle>{modalTitle}</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-4 overflow-y-auto flex-1 min-h-0">
+            {renderContent()}
+          </div>
+          <DrawerFooter className="flex-row justify-between gap-2 border-t pt-4 flex-wrap">
+            {renderFooterButtons()}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Render Dialog for all other cases (edit/new modes or view mode on desktop)
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {mode === 'new' && 'Add New Contact'}
-            {mode === 'edit' && 'Edit Contact'}
-            {mode === 'view' && 'View Contact'}
-          </DialogTitle>
+          <DialogTitle>{modalTitle}</DialogTitle>
         </DialogHeader>
-
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          {isReadOnly ? (
-            renderViewMode()
-          ) : (
-            <div className="space-y-6">
-              {/* Step indicator */}
-              <div className="flex items-center justify-center space-x-4">
-                {[1, 2, 3].map((step) => (
-                  <div key={step} className="flex items-center">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                        step <= currentStep
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-600'
-                      }`}
-                    >
-                      {step}
-                    </div>
-                    {step < 3 && (
-                      <div
-                        className={`w-16 h-1 mx-2 ${
-                          step < currentStep ? 'bg-blue-600' : 'bg-gray-200'
-                        }`}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Step content */}
-              {currentStep === 1 && renderStep1()}
-              {currentStep === 2 && renderStep2()}
-              {currentStep === 3 && renderStep3()}
-            </div>
-          )}
-
-          <DialogFooter className="flex justify-between">
-            <div className="flex space-x-2">
-              {!isReadOnly && currentStep > 1 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setCurrentStep(currentStep - 1)}
-                >
-                  Previous
-                </Button>
-              )}
-            </div>
-
-            <div className="flex space-x-2">
-              {isReadOnly && onEdit && contact && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    onEdit(contact);
-                  }}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-              )}
-              
-              {isReadOnly && onDelete && contact && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={async () => {
-                    if (confirm('Are you sure you want to delete this contact?')) {
-                      try {
-                        if (onDelete) {
-                          await onDelete(contact.id);
-                        } else {
-                          await deleteContact(contact.id);
-                        }
-                        onClose();
-                      } catch (error) {
-                        console.error('Failed to delete contact:', error);
-                      }
-                    }
-                  }}
-                  disabled={isDeleting}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {isDeleting ? 'Deleting...' : 'Delete'}
-                </Button>
-              )}
-              
-              <Button type="button" variant="outline" onClick={onClose}>
-                {isReadOnly ? 'Close' : 'Cancel'}
-              </Button>
-              
-              {!isReadOnly && currentStep < 3 && (
-                <Button
-                  type="button"
-                  onClick={() => setCurrentStep(currentStep + 1)}
-                >
-                  Next
-                </Button>
-              )}
-              
-              {!isReadOnly && currentStep === 3 && (
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? 'Saving...' : mode === 'new' ? 'Create Contact' : 'Save Changes'}
-                </Button>
-              )}
-            </div>
-          </DialogFooter>
-        </form>
+        {renderContent()}
+        <DialogFooter className="flex justify-between">
+          {renderFooterButtons()}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/wrapped-main-layout';
 import { ContactsList } from '@/components/pages/contacts-list';
 import { ContactModal } from '@/components/modals/contact-modal';
@@ -60,23 +60,73 @@ export default function ContactsPage() {
     }
   };
 
+  // Local state for drawer search/filter (not applied until Apply is clicked)
+  const [drawerSearchValue, setDrawerSearchValue] = useState('');
+  const [drawerContactTypeFilter, setDrawerContactTypeFilter] = useState<ContactType>(ContactType.All);
+
   const handleSearchChange = (value: string) => {
-    setSearchValue(value);
+    // Update drawer search value (not applied yet)
+    setDrawerSearchValue(value);
   };
+
+  const handleDrawerFilterChange = (value: ContactType) => {
+    // Update drawer filter value (not applied yet)
+    setDrawerContactTypeFilter(value);
+  };
+
+  const handleApply = () => {
+    // Apply the drawer values to actual filters
+    setSearchValue(drawerSearchValue);
+    setContactTypeFilter(drawerContactTypeFilter);
+  };
+
+  const handleClear = () => {
+    // Clear drawer values
+    setDrawerSearchValue('');
+    setDrawerContactTypeFilter(ContactType.All);
+    // Also clear actual filters
+    setSearchValue('');
+    setContactTypeFilter(ContactType.All);
+  };
+
+  // Sync drawer values when drawer opens
+  const handleDrawerOpenChange = React.useCallback((isOpen: boolean) => {
+    if (isOpen) {
+      // When drawer opens, sync drawer values with current filter values
+      setDrawerSearchValue(searchValue);
+      setDrawerContactTypeFilter(contactTypeFilter);
+      // Call handleSearchChange to sync the drawer's internal search input
+      // This will trigger onSearchChange which updates the drawer component
+      handleSearchChange(searchValue);
+    }
+  }, [searchValue, contactTypeFilter]);
+
+  // Calculate active filter count based on actual applied filters
+  const activeFilterCount = (() => {
+    let count = 0;
+    if (contactTypeFilter !== ContactType.All) count++;
+    if (searchValue && searchValue.length > 0) count++;
+    return count;
+  })();
 
   const headerConfig = {
     title: "Contacts",
     subtitle: "Contacts overview",
     showSearch: true,
-    showAddButton: true,
+    showAddButton: true, // Keep for desktop header
     addButtonText: "New Contact",
+    showAddButtonInDrawer: false, // Don't show in drawer on mobile
     searchPlaceholder: "Search contacts...",
     onSearchChange: handleSearchChange,
     onAddClick: handleAddContact,
+    onApply: handleApply,
+    onClear: handleClear,
+    onDrawerOpenChange: handleDrawerOpenChange,
+    activeFilterCount,
     customFilterComponent: (
       <Select
-        value={contactTypeFilter}
-        onValueChange={(value) => setContactTypeFilter(value as ContactType)}
+        value={drawerContactTypeFilter}
+        onValueChange={handleDrawerFilterChange}
       >
         <SelectTrigger className="w-full sm:w-auto sm:min-w-[180px]">
           <SelectValue placeholder="Filter by type" />

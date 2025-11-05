@@ -26,7 +26,8 @@ import {
   Rocket,
   Menu,
   X,
-  Users
+  Users,
+  SlidersHorizontal
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
@@ -35,6 +36,7 @@ import { colors } from '@/lib/design-tokens';
 import { OrganizationSwitcher } from './organization-switcher';
 import MobileBottomNav from './mobile-bottom-nav';
 import { mobileNavItems, filterMobileNavItems } from '@/lib/navigation/mobile-nav-items';
+import { MobileSearchFiltersDrawer } from './mobile-search-filters-drawer';
 
 export function MainLayout({ 
   children, 
@@ -56,6 +58,7 @@ export function MainLayout({
   } : { name: "User", initials: "U" });
   const [searchTerm, setSearchTerm] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const handleProfile = () => {
     router.push('/profile');
@@ -317,15 +320,21 @@ export function MainLayout({
       <div className="md:hidden flex flex-col min-h-screen">
         {/* Mobile Header */}
         <header 
-          className="border-b px-4 py-3 sticky top-0 z-10"
+          className="border-b px-4 py-3 sticky top-0 z-[60]"
           style={{ 
             backgroundColor: 'rgb(9, 28, 44)',
             borderColor: 'rgba(255, 255, 255, 0.1)'
           }}
         >
-          <div className="flex items-center relative">
-            {/* Left: Logo */}
-            <div className="flex-shrink-0 w-10">
+          <div className="flex items-center relative w-full">
+            {/* Left: Logo - Clickable */}
+            <button
+              onClick={() => {
+                router.push('/');
+              }}
+              className="flex-shrink-0 w-10 h-10 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+              aria-label="Go to dashboard"
+            >
               <Image
                 src="/logo-color.png"
                 alt="Bugal Logo"
@@ -335,16 +344,24 @@ export function MainLayout({
                 priority
                 style={{ width: 'auto', height: 'auto', filter: 'brightness(0) invert(1)' }}
               />
-            </div>
+            </button>
             {/* Center: Title */}
             <div className="flex-1 flex justify-center absolute left-0 right-0 pointer-events-none">
               <h1 className="text-lg font-semibold text-white pointer-events-auto">{headerConfig.title}</h1>
             </div>
             {/* Right: Icons */}
             <div className="flex items-center space-x-2 flex-shrink-0 ml-auto">
-              {headerConfig.showSearch && (
-                <button className="p-2 text-white hover:opacity-80 transition-opacity">
-                  <Search className="h-5 w-5" />
+              {(headerConfig.showSearch || headerConfig.showFilters || headerConfig.showAddButton || headerConfig.customFilterComponent) && (
+                <button 
+                  className="p-2 text-white hover:opacity-80 transition-opacity relative"
+                  onClick={() => setIsDrawerOpen(true)}
+                >
+                  <SlidersHorizontal className="h-5 w-5" />
+                  {headerConfig.activeFilterCount !== undefined && headerConfig.activeFilterCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center min-w-[16px]">
+                      {headerConfig.activeFilterCount}
+                    </span>
+                  )}
                 </button>
               )}
               <button className="p-2 text-white hover:opacity-80 transition-opacity relative">
@@ -355,52 +372,65 @@ export function MainLayout({
                   </span>
                 )}
               </button>
+              {/* User Avatar Dropdown */}
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center justify-center w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full transition-colors flex-shrink-0">
+                    {displayUser.avatar ? (
+                      <img 
+                        src={displayUser.avatar} 
+                        alt={displayUser.name || 'User'} 
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-white text-sm font-medium">{displayUser.initials}</span>
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent 
+                  align="end" 
+                  alignOffset={-8}
+                  sideOffset={8}
+                  className="w-56"
+                  side="bottom"
+                >
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{displayUser.name}</p>
+                      <p className="text-xs text-gray-500">{authUser?.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleProfile}>
+                    <User className="h-4 w-4 mr-2" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleBusinessSettings}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    <span>Business settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleStaff}>
+                    <Users className="h-4 w-4 mr-2" />
+                    <span>Staff</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSubscriptions}>
+                    <Rocket className="h-4 w-4 mr-2" />
+                    <span>Subscription</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} variant="destructive">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </header>
         
         {/* Mobile Content */}
         <main className="flex-1 p-4 pb-[96px]" style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom))' }}>
-          <div className="space-y-4">
-            {/* Mobile Search and Actions */}
-            {(headerConfig.showSearch || headerConfig.showFilters || headerConfig.showAddButton || headerConfig.customFilterComponent) && (
-              <div className="space-y-3">
-                {headerConfig.showSearch && (
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder={headerConfig.searchPlaceholder || "Search..."}
-                      className="pl-10"
-                      value={searchTerm}
-                      onChange={handleSearchChange}
-                    />
-                  </div>
-                )}
-                {headerConfig.customFilterComponent && (
-                  <div className="w-full">
-                    {headerConfig.customFilterComponent}
-                  </div>
-                )}
-                <div className="flex items-center space-x-2">
-                  {headerConfig.showFilters && (
-                    <Button variant="outline" size="sm" className="flex-1" onClick={handleFilterClick}>
-                      <Filter className="h-4 w-4 mr-2" />
-                      Filters
-                    </Button>
-                  )}
-                  {headerConfig.showAddButton && (
-                    <Button size="sm" className="flex-1" onClick={handleAddClick}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      {headerConfig.addButtonText || "Add"}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Mobile Page Content */}
-            {children}
-          </div>
+          {children}
         </main>
         
         {/* Mobile Bottom Navigation */}
@@ -414,6 +444,18 @@ export function MainLayout({
           )}
         />
       </div>
+
+      {/* Mobile Search and Filters Drawer */}
+      {(headerConfig.showSearch || headerConfig.showFilters || headerConfig.showAddButton || headerConfig.customFilterComponent) && (
+        <MobileSearchFiltersDrawer
+          isOpen={isDrawerOpen}
+          onOpenChange={(open) => {
+            setIsDrawerOpen(open);
+            headerConfig.onDrawerOpenChange?.(open);
+          }}
+          headerConfig={headerConfig}
+        />
+      )}
     </div>
   );
 }

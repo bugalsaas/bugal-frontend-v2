@@ -5,7 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerDescription } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -111,6 +113,7 @@ interface ExpenseModalProps {
 }
 
 export function ExpenseModal({ isOpen, onClose, mode, expense, onSave }: ExpenseModalProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [activeTab, setActiveTab] = useState('details');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -997,48 +1000,83 @@ export function ExpenseModal({ isOpen, onClose, mode, expense, onSave }: Expense
     return 'New expense';
   };
 
+  const shouldUseDrawer = !isDesktop;
+  const modalTitle = getModalTitle();
+  const modalDescription = mode === 'view' ? 'View expense details' : mode === 'edit' ? 'Edit expense information' : 'Create a new expense';
+
+  // Render content
+  const renderContent = () => {
+    if (isReadOnly) {
+      return renderViewMode();
+    }
+
+    return (
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="attachments">Attachments</TabsTrigger>
+          </TabsList>
+          <TabsContent value="details">
+            {renderEditMode()}
+          </TabsContent>
+          <TabsContent value="attachments">
+            {renderAttachmentsTab()}
+          </TabsContent>
+        </Tabs>
+      </form>
+    );
+  };
+
+  // Render footer buttons
+  const renderFooterButtons = () => (
+    <>
+      <Button variant="outline" onClick={onClose} type="button">
+        {isReadOnly ? 'Close' : 'Cancel'}
+      </Button>
+      {!isReadOnly && (
+        <Button 
+          type="submit" 
+          onClick={form.handleSubmit(onSubmit)}
+          disabled={isSaving || loadingExpense}
+        >
+          {isSaving ? 'Saving...' : 'Save Expense'}
+        </Button>
+      )}
+    </>
+  );
+
+  // Render Drawer for view mode on mobile
+  if (shouldUseDrawer) {
+    return (
+      <Drawer open={isOpen} onOpenChange={onClose}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader>
+            <DrawerTitle>{modalTitle}</DrawerTitle>
+            <DrawerDescription>{modalDescription}</DrawerDescription>
+          </DrawerHeader>
+          <div className="px-4 pb-4 overflow-y-auto flex-1 min-h-0">
+            {renderContent()}
+          </div>
+          <DrawerFooter className="flex-row justify-between gap-2 border-t pt-4 flex-wrap">
+            {renderFooterButtons()}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Render Dialog for all other cases
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{getModalTitle()}</DialogTitle>
-          <DialogDescription>
-            {mode === 'view' ? 'View expense details' : mode === 'edit' ? 'Edit expense information' : 'Create a new expense'}
-          </DialogDescription>
+          <DialogTitle>{modalTitle}</DialogTitle>
+          <DialogDescription>{modalDescription}</DialogDescription>
         </DialogHeader>
-
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          {isReadOnly ? (
-            renderViewMode()
-          ) : (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="attachments">Attachments</TabsTrigger>
-              </TabsList>
-              <TabsContent value="details">
-                {renderEditMode()}
-              </TabsContent>
-              <TabsContent value="attachments">
-                {renderAttachmentsTab()}
-              </TabsContent>
-            </Tabs>
-          )}
-        </form>
-
+        {renderContent()}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} type="button">
-            {isReadOnly ? 'Close' : 'Cancel'}
-          </Button>
-          {!isReadOnly && (
-            <Button 
-              type="submit" 
-              onClick={form.handleSubmit(onSubmit)}
-              disabled={isSaving || loadingExpense}
-            >
-              {isSaving ? 'Saving...' : 'Save Expense'}
-            </Button>
-          )}
+          {renderFooterButtons()}
         </DialogFooter>
       </DialogContent>
     </Dialog>

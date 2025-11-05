@@ -116,6 +116,7 @@ export default function ExpensesPage() {
     showAddButton: hasPermissionCreate,
     onAddClick: handleAddExpense,
     addButtonText: 'New',
+    activeFilterCount: filterCounter,
     customFilterComponent: (
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <Select

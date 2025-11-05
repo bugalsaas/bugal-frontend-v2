@@ -113,6 +113,12 @@ export interface PageHeaderConfig {
   onFilterClick?: () => void;
   searchPlaceholder?: string;
   customFilterComponent?: React.ReactNode; // Custom filter component to render in header row
+  activeFilterCount?: number; // Number of active filters for badge indicator
+  drawerTitle?: string; // Optional custom title for drawer (defaults to "Search & Filters")
+  showAddButtonInDrawer?: boolean; // Whether to show Add button in drawer (default: true if showAddButton is true)
+  onApply?: () => void; // Callback for Apply button (if provided, shows Apply/Clear instead of Add button)
+  onClear?: () => void; // Callback for Clear button
+  onDrawerOpenChange?: (isOpen: boolean) => void; // Callback when drawer open state changes
 }
 
 export interface MainLayoutProps {

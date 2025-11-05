@@ -21,7 +21,7 @@ export default function AgreementsPage() {
   const [statusFilter, setStatusFilter] = useState<AgreementStatus>(AgreementStatus.All);
   const [contactFilter, setContactFilter] = useState<string>('');
 
-  const { setFilters, data: agreements, loading, error, total, reloadList } = useAgreements();
+  const { setFilters, data: agreements, loading, error, total, reloadList, filterCounter } = useAgreements();
   const { data: contacts } = useContacts({ pageSize: 100 });
   const { 
     createAgreement, 
@@ -150,6 +150,7 @@ export default function AgreementsPage() {
     icon: FileText,
     showAddButton: true,
     onAddClick: handleAddAgreement,
+    activeFilterCount: filterCounter,
     customFilterComponent: (
       <div className="flex flex-col sm:flex-row gap-3 w-full">
         <Select

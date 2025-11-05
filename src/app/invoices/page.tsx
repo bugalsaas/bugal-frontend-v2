@@ -131,6 +131,7 @@ export default function InvoicesPage() {
     showAddButton: true,
     addButtonText: "New Invoice",
     onAddClick: handleAddInvoice,
+    activeFilterCount: filterCounter,
     customFilterComponent: (
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <Select

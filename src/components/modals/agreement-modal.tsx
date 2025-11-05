@@ -5,7 +5,9 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerDescription } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -71,6 +73,7 @@ interface AgreementModalProps {
 }
 
 export function AgreementModal({ isOpen, onClose, mode, agreement, onSave, onEdit, onDelete }: AgreementModalProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [activeTab, setActiveTab] = useState('basic');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const { data: contacts } = useContacts({ pageSize: 100 });
@@ -662,87 +665,116 @@ export function AgreementModal({ isOpen, onClose, mode, agreement, onSave, onEdi
     );
   };
 
+  const shouldUseDrawer = !isDesktop;
+  const modalTitle = mode === 'new' ? 'New Agreement' : mode === 'edit' ? 'Edit Agreement' : `View Agreement ${agreement?.code || ''}`;
+  const modalDescription = mode === 'new' ? 'Create a new service agreement' : mode === 'edit' ? 'Edit the service agreement details' : 'View the service agreement details';
+
+  // Render content
+  const renderContent = () => {
+    if (isReadOnly) {
+      return renderViewMode();
+    }
+
+    return (
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="basic">Basic Info</TabsTrigger>
+            <TabsTrigger value="support">Support Items</TabsTrigger>
+            <TabsTrigger value="responsibilities">Responsibilities</TabsTrigger>
+            <TabsTrigger value="clauses">Clauses</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="basic" className="mt-4">
+            {renderBasicInfoTab()}
+          </TabsContent>
+
+          <TabsContent value="support" className="mt-4">
+            {renderSupportItemsTab()}
+          </TabsContent>
+
+          <TabsContent value="responsibilities" className="mt-4">
+            {renderResponsibilitiesTab()}
+          </TabsContent>
+
+          <TabsContent value="clauses" className="mt-4">
+            {renderClausesTab()}
+          </TabsContent>
+        </Tabs>
+      </form>
+    );
+  };
+
+  // Render footer buttons
+  const renderFooterButtons = () => (
+    <>
+      <div className="flex space-x-2">
+        {mode === 'view' && onEdit && (
+          <Button type="button" variant="outline" onClick={() => onEdit(agreement!)}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+        )}
+        {mode === 'view' && onDelete && (
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => {
+              if (window.confirm('Are you sure you want to delete this agreement?')) {
+                onDelete(agreement!.id);
+                onClose();
+              }
+            }}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
+        )}
+        <Button type="button" variant="outline" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+
+      {!isReadOnly && (
+        <Button type="submit" disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting ? 'Saving...' : mode === 'new' ? 'Create Agreement' : 'Save Changes'}
+        </Button>
+      )}
+    </>
+  );
+
+  // Render Drawer for view mode on mobile
+  if (shouldUseDrawer) {
+    return (
+      <Drawer open={isOpen} onOpenChange={onClose}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader>
+            <DrawerTitle>{modalTitle}</DrawerTitle>
+            <DrawerDescription>{modalDescription}</DrawerDescription>
+          </DrawerHeader>
+          <div className="px-4 pb-4 overflow-y-auto flex-1 min-h-0">
+            {renderContent()}
+          </div>
+          <DrawerFooter className="flex-row justify-between gap-2 border-t pt-4 flex-wrap">
+            {renderFooterButtons()}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Render Dialog for all other cases
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {mode === 'new' && 'New Agreement'}
-            {mode === 'edit' && 'Edit Agreement'}
-            {mode === 'view' && `View Agreement ${agreement?.code || ''}`}
-          </DialogTitle>
-          <DialogDescription>
-            {mode === 'new' && 'Create a new service agreement'}
-            {mode === 'edit' && 'Edit the service agreement details'}
-            {mode === 'view' && 'View the service agreement details'}
-          </DialogDescription>
+          <DialogTitle>{modalTitle}</DialogTitle>
+          <DialogDescription>{modalDescription}</DialogDescription>
         </DialogHeader>
-
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          {isReadOnly ? (
-            renderViewMode()
-          ) : (
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                <TabsTrigger value="support">Support Items</TabsTrigger>
-                <TabsTrigger value="responsibilities">Responsibilities</TabsTrigger>
-                <TabsTrigger value="clauses">Clauses</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="basic" className="mt-4">
-                {renderBasicInfoTab()}
-              </TabsContent>
-
-              <TabsContent value="support" className="mt-4">
-                {renderSupportItemsTab()}
-              </TabsContent>
-
-              <TabsContent value="responsibilities" className="mt-4">
-                {renderResponsibilitiesTab()}
-              </TabsContent>
-
-              <TabsContent value="clauses" className="mt-4">
-                {renderClausesTab()}
-              </TabsContent>
-            </Tabs>
-          )}
-
-          <DialogFooter className="flex justify-between mt-6">
-            <div className="flex space-x-2">
-              {mode === 'view' && onEdit && (
-                <Button type="button" variant="outline" onClick={() => onEdit(agreement!)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-              )}
-              {mode === 'view' && onDelete && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => {
-                    if (window.confirm('Are you sure you want to delete this agreement?')) {
-                      onDelete(agreement!.id);
-                      onClose();
-                    }
-                  }}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </Button>
-              )}
-              <Button type="button" variant="outline" onClick={onClose}>
-                Close
-              </Button>
-            </div>
-
-            {!isReadOnly && (
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Saving...' : mode === 'new' ? 'Create Agreement' : 'Save Changes'}
-              </Button>
-            )}
-          </DialogFooter>
-        </form>
+        {renderContent()}
+        <DialogFooter className="flex justify-between mt-6">
+          {renderFooterButtons()}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -5,7 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerDescription } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -85,6 +87,7 @@ interface InvoiceModalProps {
 }
 
 export function InvoiceModal({ isOpen, onClose, mode, invoice, onSave }: InvoiceModalProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const isNew = mode === 'new';
   const isReadOnly = mode === 'view';
   const invoiceSchema = createInvoiceSchema(isNew);
@@ -745,58 +748,87 @@ export function InvoiceModal({ isOpen, onClose, mode, invoice, onSave }: Invoice
     );
   };
 
+  const shouldUseDrawer = !isDesktop;
+  const modalTitle = mode === 'new' ? 'Add New Invoice' : mode === 'edit' ? 'Edit Invoice' : 'View Invoice';
+  const modalDescription = mode === 'new' ? 'Create a new invoice by selecting a contact, date, and items to invoice.' : mode === 'edit' ? 'Update invoice details and dates.' : 'View invoice details, payments, and history.';
+
+  // Render content
+  const renderContent = () => {
+    if (isReadOnly) {
+      return renderViewMode();
+    }
+
+    return (
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="payments">
+              Receipts ({(invoiceToDisplay?.receipts || payments).length})
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="details">
+            {renderDetailsTab()}
+          </TabsContent>
+          
+          <TabsContent value="payments">
+            {renderPaymentsTab()}
+          </TabsContent>
+        </Tabs>
+      </form>
+    );
+  };
+
+  // Render footer buttons
+  const renderFooterButtons = () => (
+    <>
+      <Button variant="outline" onClick={onClose}>
+        {isReadOnly ? 'Close' : 'Cancel'}
+      </Button>
+      {!isReadOnly && (
+        <Button 
+          type="submit" 
+          onClick={form.handleSubmit(onSubmit)}
+          disabled={isSaving}
+        >
+          {isSaving ? 'Saving...' : 'Save Invoice'}
+        </Button>
+      )}
+    </>
+  );
+
+  // Render Drawer for view mode on mobile
+  if (shouldUseDrawer) {
+    return (
+      <Drawer open={isOpen} onOpenChange={onClose}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader>
+            <DrawerTitle>{modalTitle}</DrawerTitle>
+            <DrawerDescription>{modalDescription}</DrawerDescription>
+          </DrawerHeader>
+          <div className="px-4 pb-4 overflow-y-auto flex-1 min-h-0">
+            {renderContent()}
+          </div>
+          <DrawerFooter className="flex-row justify-between gap-2 border-t pt-4 flex-wrap">
+            {renderFooterButtons()}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Render Dialog for all other cases
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {mode === 'new' && 'Add New Invoice'}
-            {mode === 'edit' && 'Edit Invoice'}
-            {mode === 'view' && 'View Invoice'}
-          </DialogTitle>
-          <DialogDescription>
-            {mode === 'new' && 'Create a new invoice by selecting a contact, date, and items to invoice.'}
-            {mode === 'edit' && 'Update invoice details and dates.'}
-            {mode === 'view' && 'View invoice details, payments, and history.'}
-          </DialogDescription>
+          <DialogTitle>{modalTitle}</DialogTitle>
+          <DialogDescription>{modalDescription}</DialogDescription>
         </DialogHeader>
-
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          {isReadOnly ? (
-            renderViewMode()
-          ) : (
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList>
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="payments">
-                  Receipts ({(invoiceToDisplay?.receipts || payments).length})
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="details">
-                {renderDetailsTab()}
-              </TabsContent>
-              
-              <TabsContent value="payments">
-                {renderPaymentsTab()}
-              </TabsContent>
-            </Tabs>
-          )}
-        </form>
-
+        {renderContent()}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            {isReadOnly ? 'Close' : 'Cancel'}
-          </Button>
-          {!isReadOnly && (
-            <Button 
-              type="submit" 
-              onClick={form.handleSubmit(onSubmit)}
-              disabled={isSaving}
-            >
-              {isSaving ? 'Saving...' : 'Save Invoice'}
-            </Button>
-          )}
+          {renderFooterButtons()}
         </DialogFooter>
       </DialogContent>
     </Dialog>

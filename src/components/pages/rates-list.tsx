@@ -116,17 +116,9 @@ export function RatesList({
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+      {/* Filters - Desktop only (Mobile filters are in drawer) */}
+      <div className="hidden md:flex flex-col md:flex-row md:items-end md:justify-between gap-3">
         <div className="flex-1 flex flex-col md:flex-row gap-3">
-          <div className="md:w-72">
-            <label className="block text-xs text-gray-600 mb-1">Search</label>
-            <Input
-              placeholder="Start typing to filter results"
-              value={filters.search || ''}
-              onChange={(e) => setFilters({ search: e.target.value })}
-            />
-          </div>
           <div className="md:w-48">
             <label className="block text-xs text-gray-600 mb-1">Type</label>
             <Select

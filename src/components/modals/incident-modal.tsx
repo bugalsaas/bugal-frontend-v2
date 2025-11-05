@@ -5,7 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -77,6 +79,7 @@ export function IncidentModal({
   onDelete,
   isLoading = false,
 }: IncidentModalProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const form = useForm<IncidentFormValues>({
     resolver: zodResolver(incidentSchema),
     defaultValues: {
@@ -188,21 +191,23 @@ export function IncidentModal({
     setWitnesses(updatedWitnesses);
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
-            <span>
-              {mode === 'new' && 'New Incident Report'}
-              {mode === 'edit' && 'Edit Incident Report'}
-              {mode === 'view' && 'View Incident Report'}
-            </span>
-          </DialogTitle>
-        </DialogHeader>
+  const shouldUseDrawer = !isDesktop;
+  const modalTitle = (
+    <>
+      <AlertTriangle className="h-5 w-5 text-red-500" />
+      <span>
+        {mode === 'new' && 'New Incident Report'}
+        {mode === 'edit' && 'Edit Incident Report'}
+        {mode === 'view' && 'View Incident Report'}
+      </span>
+    </>
+  );
 
-        {mode === 'view' && incident ? (
+  // Render view mode content
+  const renderViewMode = () => {
+    if (!incident) return null;
+    
+    return (
           <div className="space-y-6">
             {/* General Information */}
             <Card>
@@ -339,31 +344,12 @@ export function IncidentModal({
                 )}
               </CardContent>
             </Card>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end space-x-3 pt-4 border-t">
-              <Button variant="outline" onClick={onClose}>
-                Close
-              </Button>
-              {onDelete && (
-                <Button 
-                  variant="destructive"
-                  onClick={onDelete}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    'Delete Incident'
-                  )}
-                </Button>
-              )}
-            </div>
           </div>
-        ) : (
+    );
+  };
+
+  // Render form content
+  const renderFormContent = () => (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* General Information */}
             <Card>
@@ -714,6 +700,99 @@ export function IncidentModal({
               </Button>
             </div>
           </form>
+  );
+
+  // Render footer buttons for view mode
+  const renderViewFooterButtons = () => (
+    <>
+      <Button variant="outline" onClick={onClose}>
+        Close
+      </Button>
+      {onDelete && (
+        <Button 
+          variant="destructive"
+          onClick={onDelete}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Deleting...
+            </>
+          ) : (
+            'Delete Incident'
+          )}
+        </Button>
+      )}
+    </>
+  );
+
+  // Render footer buttons for form mode
+  const renderFormFooterButtons = () => (
+    <>
+      <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+        Cancel
+      </Button>
+      <Button type="submit" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {mode === 'new' ? 'Creating...' : 'Saving...'}
+          </>
+        ) : (
+          mode === 'new' ? 'Create Incident Report' : 'Save Changes'
+        )}
+      </Button>
+    </>
+  );
+
+  // Render content
+  const renderContent = () => {
+    if (mode === 'view' && incident) {
+      return renderViewMode();
+    }
+    return renderFormContent();
+  };
+
+  // Render Drawer for all modes on mobile
+  if (shouldUseDrawer) {
+    return (
+      <Drawer open={isOpen} onOpenChange={onClose}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader>
+            <DrawerTitle className="flex items-center space-x-2">
+              {modalTitle}
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-4 overflow-y-auto flex-1 min-h-0">
+            {renderViewMode()}
+          </div>
+          <DrawerFooter className="flex-row justify-between gap-2 border-t pt-4 flex-wrap">
+            {renderViewFooterButtons()}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Render Dialog for all other cases
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center space-x-2">
+            {modalTitle}
+          </DialogTitle>
+        </DialogHeader>
+        {renderContent()}
+        {mode === 'view' && incident ? (
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t">
+            {renderViewFooterButtons()}
+          </div>
+        ) : (
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t">
+            {renderFormFooterButtons()}
+          </div>
         )}
       </DialogContent>
     </Dialog>

@@ -8,7 +8,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -71,6 +73,7 @@ export function OrganizationModal({
   organization,
   onSave,
 }: OrganizationModalProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [selectedBank, setSelectedBank] = useState<string>('');
@@ -186,17 +189,13 @@ export function OrganizationModal({
       .slice(0, 2);
   };
 
-  if (mode === 'view' && organization) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-3">
-              <Building2 className="h-6 w-6" />
-              <span>View Organization</span>
-            </DialogTitle>
-          </DialogHeader>
+  const shouldUseDrawer = !isDesktop;
 
+  // Render view mode content
+  const renderViewMode = () => {
+    if (!organization) return null;
+    
+    return (
           <div className="space-y-6">
             {/* Organization Header */}
             <Card>
@@ -359,31 +358,19 @@ export function OrganizationModal({
               </TabsContent>
             </Tabs>
           </div>
-        </DialogContent>
-      </Dialog>
     );
-  }
+  };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-3">
-            <Building2 className="h-6 w-6" />
-            <span>
-              {mode === 'new' ? 'Create Organization' : 'Edit Organization'}
-            </span>
-          </DialogTitle>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="contact">Contact</TabsTrigger>
-              <TabsTrigger value="billing">Billing</TabsTrigger>
-              <TabsTrigger value="banking">Banking</TabsTrigger>
-            </TabsList>
+  // Render content for edit/new modes
+  const renderEditForm = () => (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <Tabs defaultValue="details" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="contact">Contact</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="banking">Banking</TabsTrigger>
+        </TabsList>
 
             <TabsContent value="details" className="space-y-4">
               <Card>
@@ -689,23 +676,114 @@ export function OrganizationModal({
               </Card>
             </TabsContent>
           </Tabs>
+    </form>
+  );
 
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Save Organization'
-              )}
-            </Button>
+  // Render content
+  const renderContent = () => {
+    if (mode === 'view' && organization) {
+      return renderViewMode();
+    }
+    return renderEditForm();
+  };
+
+  // Render footer buttons
+  const renderFooterButtons = () => {
+    if (mode === 'view' && organization) {
+      return (
+        <Button variant="outline" onClick={onClose}>
+          Close
+        </Button>
+      );
+    }
+    return (
+      <>
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            'Save Organization'
+          )}
+        </Button>
+      </>
+    );
+  };
+
+  // Render modal title
+  const getModalTitle = () => {
+    if (mode === 'view') return 'View Organization';
+    if (mode === 'edit') return 'Edit Organization';
+    return 'Create Organization';
+  };
+
+  // Render Drawer for all modes on mobile
+  if (shouldUseDrawer) {
+    return (
+      <Drawer open={isOpen} onOpenChange={onClose}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader>
+            <DrawerTitle className="flex items-center space-x-3">
+              <Building2 className="h-6 w-6" />
+              <span>{getModalTitle()}</span>
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-4 overflow-y-auto flex-1 min-h-0">
+            {renderContent()}
+            {mode !== 'view' && (
+              <div className="flex justify-end space-x-2 pt-4 border-t">
+                {renderFooterButtons()}
+              </div>
+            )}
           </div>
-        </form>
+          {mode === 'view' && (
+            <DrawerFooter className="flex-row justify-end gap-2 border-t pt-4">
+              {renderFooterButtons()}
+            </DrawerFooter>
+          )}
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Render Dialog for all modes on desktop
+  if (mode === 'view' && organization) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-3">
+              <Building2 className="h-6 w-6" />
+              <span>View Organization</span>
+            </DialogTitle>
+          </DialogHeader>
+          {renderViewMode()}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Render Dialog for edit/new modes on desktop
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center space-x-3">
+            <Building2 className="h-6 w-6" />
+            <span>
+              {mode === 'new' ? 'Create Organization' : 'Edit Organization'}
+            </span>
+          </DialogTitle>
+        </DialogHeader>
+        {renderEditForm()}
+        <div className="flex justify-end space-x-2 pt-4">
+          {renderFooterButtons()}
+        </div>
       </DialogContent>
     </Dialog>
   );

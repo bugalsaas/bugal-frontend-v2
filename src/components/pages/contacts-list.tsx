@@ -142,6 +142,14 @@ export function ContactsList({
         <p className="text-sm text-gray-600">
           {total} contact{total !== 1 ? 's' : ''} found
         </p>
+        <Button 
+          onClick={onAddContact}
+          className="flex items-center gap-2"
+          size="sm"
+        >
+          <Plus className="h-4 w-4" />
+          New Contact
+        </Button>
       </div>
 
       {/* Contacts List */}

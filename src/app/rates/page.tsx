@@ -4,15 +4,20 @@ import React, { useState } from 'react';
 import { MainLayout } from '@/components/layout/wrapped-main-layout';
 import { RatesList } from '@/components/pages/rates-list';
 import { RateModal } from '@/components/modals/rate-modal';
-import { useRateActions } from '@/hooks/use-rates';
-import { Rate } from '@/lib/api/rates-service';
+import { useRateActions, useRates } from '@/hooks/use-rates';
+import { Rate, RateType } from '@/lib/api/rates-service';
 import { DollarSign } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function RatesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'new' | 'edit' | 'view'>('new');
   const [selectedRate, setSelectedRate] = useState<Rate | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Get rates data and filters
+  const { filterCounter, filters, setFilters } = useRates();
 
   const { 
     createRate, 
@@ -104,12 +109,46 @@ export default function RatesPage() {
     setSelectedRate(null);
   };
 
+  const handleSearchChange = (value: string) => {
+    setFilters({ search: value });
+  };
+
   const headerConfig = {
     title: 'Rates',
     subtitle: 'Rates overview',
     icon: DollarSign,
+    showSearch: true,
     showAddButton: true,
+    addButtonText: 'New',
+    searchPlaceholder: 'Start typing to filter results...',
+    onSearchChange: handleSearchChange,
     onAddClick: handleAddRate,
+    activeFilterCount: filterCounter,
+    customFilterComponent: (
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+        <Select
+          value={filters.rateType || 'all'}
+          onValueChange={(v) => setFilters({ rateType: v === 'all' ? undefined : (v as RateType) })}
+        >
+          <SelectTrigger className="w-full sm:w-auto sm:min-w-[180px]">
+            <SelectValue placeholder="All types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            <SelectItem value={RateType.Hourly}>Hourly</SelectItem>
+            <SelectItem value={RateType.Fixed}>Fixed</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="archived"
+            checked={!!filters.isArchived}
+            onCheckedChange={(v) => setFilters({ isArchived: !!v })}
+          />
+          <label htmlFor="archived" className="text-sm text-gray-700 cursor-pointer">Show archived</label>
+        </div>
+      </div>
+    ),
   };
 
   return (

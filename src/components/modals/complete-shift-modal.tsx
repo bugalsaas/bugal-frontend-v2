@@ -5,7 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerDescription } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -30,6 +32,7 @@ interface CompleteShiftModalProps {
 }
 
 export function CompleteShiftModal({ isOpen, onClose, shift, onComplete }: CompleteShiftModalProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const { completeShift, isCompleting } = useShiftActions();
   const [notesLength, setNotesLength] = useState(0);
 
@@ -86,17 +89,9 @@ export function CompleteShiftModal({ isOpen, onClose, shift, onComplete }: Compl
   const startTime = formatShiftDateTime(shift.startDate);
   const endTime = formatShiftDateTime(shift.endDate);
 
-  return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Complete Shift</DialogTitle>
-          <DialogDescription>
-            Complete this shift and add any completion notes.
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+  // Render content
+  const renderContent = () => (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Shift Details */}
           <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center justify-between">
@@ -177,31 +172,72 @@ export function CompleteShiftModal({ isOpen, onClose, shift, onComplete }: Compl
               )}
             </div>
           </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isCompleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isCompleting}
-            >
-              {isCompleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Completing...
-                </>
-              ) : (
-                'Complete Shift'
-              )}
-            </Button>
-          </DialogFooter>
         </form>
+  );
+
+  // Render footer buttons
+  const renderFooterButtons = () => (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleClose}
+        disabled={isCompleting}
+      >
+        Cancel
+      </Button>
+      <Button
+        type="submit"
+        disabled={isCompleting}
+      >
+        {isCompleting ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Completing...
+          </>
+        ) : (
+          'Complete Shift'
+        )}
+      </Button>
+    </>
+  );
+
+  // Render Drawer on mobile
+  if (!isDesktop) {
+    return (
+      <Drawer open={isOpen} onOpenChange={handleClose}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader>
+            <DrawerTitle>Complete Shift</DrawerTitle>
+            <DrawerDescription>
+              Complete this shift and add any completion notes.
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="px-4 pb-4 overflow-y-auto flex-1 min-h-0">
+            {renderContent()}
+          </div>
+          <DrawerFooter className="flex-row justify-between gap-2 border-t pt-4 flex-wrap">
+            {renderFooterButtons()}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Render Dialog on desktop
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Complete Shift</DialogTitle>
+          <DialogDescription>
+            Complete this shift and add any completion notes.
+          </DialogDescription>
+        </DialogHeader>
+        {renderContent()}
+        <DialogFooter>
+          {renderFooterButtons()}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
