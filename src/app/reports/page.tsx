@@ -67,14 +67,6 @@ export default function ReportsPage() {
   return (
     <MainLayout activeNavItem="reports" headerConfig={headerConfig}>
       <div className="space-y-6">
-        {/* Introduction */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">Report Generation</h3>
-          <p className="text-blue-800">
-            Generate detailed reports for your business data. Each report allows you to filter by date range, 
-            contacts, and other criteria to get the insights you need.
-          </p>
-        </div>
 
         {/* Reports Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

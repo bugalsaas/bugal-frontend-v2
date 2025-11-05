@@ -18,11 +18,17 @@ export default function ExpensesPage() {
   const [modalMode, setModalMode] = useState<'new' | 'edit' | 'view'>('new');
   const [selectedExpense, setSelectedExpense] = useState<Expense | undefined>();
 
-  // Filter states
+  // Applied filter states
   const [typeFilter, setTypeFilter] = useState<ExpenseType | undefined>(defaultExpensesFilters.type);
   const [contactFilter, setContactFilter] = useState<string>(defaultExpensesFilters.contact || '-1');
   const [dateFromFilter, setDateFromFilter] = useState<string | undefined>(undefined);
   const [dateToFilter, setDateToFilter] = useState<string | undefined>(undefined);
+
+  // Drawer filter states (not applied until Apply)
+  const [drawerTypeFilter, setDrawerTypeFilter] = useState<ExpenseType | 'all'>(ExpenseType.All);
+  const [drawerContactFilter, setDrawerContactFilter] = useState<string>('all');
+  const [drawerFromDate, setDrawerFromDate] = useState<string | undefined>(undefined);
+  const [drawerToDate, setDrawerToDate] = useState<string | undefined>(undefined);
 
   // Fetch expenses with filters
   const {
@@ -103,27 +109,52 @@ export default function ExpensesPage() {
   };
 
   const handleClearFilters = () => {
+    // Clear drawer + applied
+    setDrawerTypeFilter('all');
+    setDrawerContactFilter('all');
+    setDrawerFromDate(undefined);
+    setDrawerToDate(undefined);
     setTypeFilter(defaultExpensesFilters.type);
     setContactFilter(defaultExpensesFilters.contact || '-1');
     setDateFromFilter(undefined);
     setDateToFilter(undefined);
   };
 
+  const handleApply = () => {
+    setTypeFilter(drawerTypeFilter === 'all' ? ExpenseType.All : (drawerTypeFilter as ExpenseType));
+    setContactFilter(drawerContactFilter === 'all' ? '-1' : drawerContactFilter);
+    setDateFromFilter(drawerFromDate);
+    setDateToFilter(drawerToDate);
+  };
+
+  const handleDrawerOpenChange = (isOpen: boolean) => {
+    if (isOpen) {
+      setDrawerTypeFilter(typeFilter && typeFilter !== ExpenseType.All ? typeFilter : 'all');
+      setDrawerContactFilter(contactFilter && contactFilter !== '-1' ? contactFilter : 'all');
+      setDrawerFromDate(dateFromFilter);
+      setDrawerToDate(dateToFilter);
+    }
+  };
+
   const headerConfig = {
     title: 'Expenses',
     subtitle: 'Expenses overview',
     icon: Receipt,
-    showAddButton: hasPermissionCreate,
+    showAddButton: hasPermissionCreate, // desktop header
     onAddClick: handleAddExpense,
     addButtonText: 'New',
+    showAddButtonInDrawer: false,
+    onApply: handleApply,
+    onClear: handleClearFilters,
+    onDrawerOpenChange: handleDrawerOpenChange,
     activeFilterCount: filterCounter,
     customFilterComponent: (
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+      <div className="grid grid-cols-2 gap-3 items-start w-full">
         <Select
-          value={typeFilter === ExpenseType.All || !typeFilter ? 'all' : typeFilter}
-          onValueChange={(value) => setTypeFilter(value === 'all' ? ExpenseType.All : (value as ExpenseType))}
+          value={drawerTypeFilter || 'all'}
+          onValueChange={(value) => setDrawerTypeFilter(value === 'all' ? 'all' : (value as ExpenseType))}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
@@ -141,11 +172,11 @@ export default function ExpensesPage() {
         </Select>
 
         <Select
-          value={contactFilter || 'all'}
-          onValueChange={(value) => setContactFilter(value === 'all' ? '-1' : value)}
+          value={drawerContactFilter || 'all'}
+          onValueChange={(value) => setDrawerContactFilter(value)}
           disabled={contactsLoading}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full">
             <SelectValue placeholder={contactsLoading ? "Loading..." : contactsError ? "Error loading contacts" : "Contact"} />
           </SelectTrigger>
           <SelectContent>
@@ -164,27 +195,25 @@ export default function ExpensesPage() {
           </SelectContent>
         </Select>
 
-        <DatePickerInputField
-          label=""
-          id="dateFrom"
-          value={dateFromFilter}
-          onChange={(value) => setDateFromFilter(value || undefined)}
-          placeholder="From Date"
-        />
+        <div className="col-span-2">
+          <DatePickerInputField
+            label=""
+            id="dateFrom"
+            value={drawerFromDate}
+            onChange={(value) => setDrawerFromDate(value || undefined)}
+            placeholder="From Date"
+          />
+        </div>
 
-        <DatePickerInputField
-          label=""
-          id="dateTo"
-          value={dateToFilter}
-          onChange={(value) => setDateToFilter(value || undefined)}
-          placeholder="To Date"
-        />
-
-        {filterCounter > 0 && (
-          <Button variant="ghost" onClick={handleClearFilters} size="sm">
-            Clear ({filterCounter})
-          </Button>
-        )}
+        <div className="col-span-2">
+          <DatePickerInputField
+            label=""
+            id="dateTo"
+            value={drawerToDate}
+            onChange={(value) => setDrawerToDate(value || undefined)}
+            placeholder="To Date"
+          />
+        </div>
       </div>
     ),
   };
@@ -196,6 +225,7 @@ export default function ExpensesPage() {
         loading={isLoading}
         error={error}
         total={total}
+        onAddExpense={hasPermissionCreate ? handleAddExpense : undefined}
         onEditExpense={handleEditExpense}
         onViewExpense={handleViewExpense}
         onDeleteExpense={handleDeleteExpense}

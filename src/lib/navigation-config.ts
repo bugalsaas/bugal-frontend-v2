@@ -12,7 +12,6 @@ import {
   Receipt,
   DollarSign,
   FileCheck,
-  Building2,
   Bell,
   Search,
   Filter,
@@ -83,20 +82,6 @@ export const navigationItems: NavigationItem[] = [
     label: 'Reports', 
     icon: TrendingUp, 
     href: '/reports', 
-    badge: null 
-  },
-  { 
-    id: 'organizations', 
-    label: 'Organizations', 
-    icon: Building2, 
-    href: '/organizations', 
-    badge: null 
-  },
-  { 
-    id: 'users', 
-    label: 'Users', 
-    icon: Users, 
-    href: '/users', 
     badge: null 
   },
 ];

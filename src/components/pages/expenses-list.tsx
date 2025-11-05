@@ -21,6 +21,7 @@ interface ExpensesListProps {
   loading?: boolean;
   error?: string | null;
   total?: number;
+  onAddExpense?: () => void;
   onEditExpense: (expense: Expense) => void;
   onViewExpense: (expense: Expense) => void;
   onDeleteExpense?: (expenseId: string) => void;
@@ -31,6 +32,7 @@ export function ExpensesList({
   loading = false,
   error = null,
   total = 0,
+  onAddExpense,
   onEditExpense, 
   onViewExpense,
   onDeleteExpense,
@@ -112,6 +114,18 @@ export function ExpensesList({
 
   return (
     <div className="space-y-4">
+      {/* Results summary + New button */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-600">
+          Showing {expenses.length} of {total} expense{total !== 1 ? 's' : ''}
+        </p>
+        {onAddExpense && (
+          <Button onClick={onAddExpense} size="sm" className="flex items-center gap-2">
+            New Expense
+          </Button>
+        )}
+      </div>
+
       {/* Desktop Table */}
       <div className="hidden xl:block overflow-x-auto bg-white border border-gray-200 rounded-lg">
         <table className="min-w-full divide-y divide-gray-200">
