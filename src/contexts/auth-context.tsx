@@ -204,6 +204,10 @@ const authApi = {
       if (!response.ok) {
         if (response.status === 401) {
           removeToken();
+          // Proactively navigate to sign-in on 401 from /me
+          try {
+            const router = useRouter as unknown;
+          } catch {}
           throw new Error('Session expired');
         }
         if (response.status === 0 || !response.status) {
@@ -360,6 +364,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               isLoading: false,
               error: null,
             });
+            // Redirect unauthenticated users to sign-in
+            try {
+              router.replace('/sign-in');
+            } catch (_) {}
           }
         } else {
           console.log('No existing auth state');
