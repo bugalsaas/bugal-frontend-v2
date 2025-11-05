@@ -6,7 +6,7 @@ import { InvoicesList } from '@/components/pages/invoices-list';
 import { InvoiceModal } from '@/components/modals/invoice-modal';
 import { PaymentModal } from '@/components/modals/payment-modal';
 import { NotifyModal } from '@/components/modals/notify-modal';
-import { Invoice, InvoicePayment, InvoiceStatus } from '@/lib/api/invoices-service';
+import { Invoice, InvoiceStatus } from '@/lib/api/invoices-service';
 import { useInvoices, useInvoiceActions } from '@/hooks/use-invoices';
 import { useContacts } from '@/hooks/use-contacts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,11 +21,17 @@ export default function InvoicesPage() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | undefined>();
   const [paymentModalMode, setPaymentModalMode] = useState<'payment' | 'writeoff'>('payment');
 
-  // Filter states
+  // Filter states (applied)
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | undefined>();
   const [contactFilter, setContactFilter] = useState<string>('');
   const [dateFromFilter, setDateFromFilter] = useState<string>('');
   const [dateToFilter, setDateToFilter] = useState<string>('');
+
+  // Drawer filter states (not applied until Apply)
+  const [drawerStatusFilter, setDrawerStatusFilter] = useState<InvoiceStatus | 'all' | undefined>('all');
+  const [drawerContactFilter, setDrawerContactFilter] = useState<string>('all');
+  const [drawerFromDate, setDrawerFromDate] = useState<string>('');
+  const [drawerToDate, setDrawerToDate] = useState<string>('');
 
   // Fetch invoices with filters
   const {
@@ -94,12 +100,12 @@ export default function InvoicesPage() {
     reloadList();
   };
 
-  const handleSavePayment = (payment: InvoicePayment) => {
+  const handleSavePayment = () => {
     setIsPaymentModalOpen(false);
     reloadList();
   };
 
-  const handleNotifyInvoice = (recipients: Array<{ email: string; role: string }>) => {
+  const handleNotifyInvoice = () => {
     setIsNotifyModalOpen(false);
     reloadList();
   };
@@ -118,27 +124,54 @@ export default function InvoicesPage() {
   };
 
   const handleClearFilters = () => {
+    // Clear drawer and applied filters
+    setDrawerStatusFilter('all');
+    setDrawerContactFilter('all');
+    setDrawerFromDate('');
+    setDrawerToDate('');
     setStatusFilter(undefined);
     setContactFilter('');
     setDateFromFilter('');
     setDateToFilter('');
   };
 
+  const handleApply = () => {
+    // Apply drawer values to actual filters
+    setStatusFilter(drawerStatusFilter === 'all' ? undefined : (drawerStatusFilter as InvoiceStatus));
+    setContactFilter(drawerContactFilter === 'all' ? '' : drawerContactFilter);
+    setDateFromFilter(drawerFromDate);
+    setDateToFilter(drawerToDate);
+  };
+
+  const handleDrawerOpenChange = (isOpen: boolean) => {
+    if (isOpen) {
+      // Sync drawer values from applied filters
+      setDrawerStatusFilter(statusFilter ?? 'all');
+      setDrawerContactFilter(contactFilter || 'all');
+      setDrawerFromDate(dateFromFilter);
+      setDrawerToDate(dateToFilter);
+    }
+  };
+
   const headerConfig = {
     title: "Invoices",
     subtitle: "Invoices overview",
     showSearch: false,
-    showAddButton: true,
+    showAddButton: true, // Desktop header button
     addButtonText: "New Invoice",
     onAddClick: handleAddInvoice,
+    showAddButtonInDrawer: false, // Hide in drawer (we use Apply/Clear)
+    onApply: handleApply,
+    onClear: handleClearFilters,
+    onDrawerOpenChange: handleDrawerOpenChange,
     activeFilterCount: filterCounter,
     customFilterComponent: (
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+      <div className="grid grid-cols-2 gap-3 items-start w-full">
         <Select
-          value={statusFilter || 'all'}
-          onValueChange={(value) => setStatusFilter(value === 'all' ? undefined : value as InvoiceStatus)}
+          value={drawerStatusFilter || 'all'}
+          onValueChange={(value) => setDrawerStatusFilter(value === 'all' ? 'all' : value as InvoiceStatus)}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -151,11 +184,11 @@ export default function InvoicesPage() {
         </Select>
 
         <Select
-          value={contactFilter || 'all'}
-          onValueChange={(value) => setContactFilter(value === 'all' ? '' : value)}
+          value={drawerContactFilter || 'all'}
+          onValueChange={(value) => setDrawerContactFilter(value)}
           disabled={contactsLoading}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full">
             <SelectValue placeholder={contactsLoading ? "Loading..." : contactsError ? "Error loading contacts" : "Contact"} />
           </SelectTrigger>
           <SelectContent>
@@ -174,27 +207,25 @@ export default function InvoicesPage() {
           </SelectContent>
         </Select>
 
+        <div className="col-span-2">
         <DatePickerInputField
           label=""
           id="dateFrom"
-          value={dateFromFilter}
-          onChange={(value) => setDateFromFilter(value)}
+          value={drawerFromDate}
+          onChange={(value) => setDrawerFromDate(value)}
           placeholder="From Date"
         />
+        </div>
 
+        <div className="col-span-2">
         <DatePickerInputField
           label=""
           id="dateTo"
-          value={dateToFilter}
-          onChange={(value) => setDateToFilter(value)}
+          value={drawerToDate}
+          onChange={(value) => setDrawerToDate(value)}
           placeholder="To Date"
         />
-
-        {filterCounter > 0 && (
-          <Button variant="ghost" onClick={handleClearFilters} size="sm">
-            Clear ({filterCounter})
-          </Button>
-        )}
+        </div>
       </div>
     ),
   };
@@ -209,6 +240,7 @@ export default function InvoicesPage() {
         loading={loading}
         error={error}
         total={total}
+        onAddInvoice={handleAddInvoice}
         onViewInvoice={handleViewInvoice}
         onEditInvoice={handleEditInvoice}
         onAddPayment={handleAddPayment}

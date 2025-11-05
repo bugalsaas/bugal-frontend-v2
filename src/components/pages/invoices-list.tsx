@@ -30,6 +30,7 @@ interface InvoicesListProps {
   loading: boolean;
   error: string | null;
   total: number;
+  onAddInvoice?: () => void;
   onViewInvoice: (invoice: Invoice) => void;
   onEditInvoice?: (invoice: Invoice) => void;
   onAddPayment?: (invoice: Invoice) => void;
@@ -43,6 +44,7 @@ export function InvoicesList({
   loading,
   error,
   total,
+  onAddInvoice,
   onViewInvoice, 
   onEditInvoice,
   onAddPayment,
@@ -169,12 +171,18 @@ export function InvoicesList({
 
   return (
     <div className="space-y-6">
-      {/* Results Summary */}
+      {/* Results Summary with New button */}
       {!loading && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-600">
-            {total} invoice{total !== 1 ? 's' : ''} found
+            Showing {invoices.length} of {total} invoice{total !== 1 ? 's' : ''}
           </p>
+          {onAddInvoice && (
+            <Button onClick={onAddInvoice} size="sm" className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              New Invoice
+            </Button>
+          )}
         </div>
       )}
 

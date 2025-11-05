@@ -199,23 +199,25 @@ export function RatesList({
             className="p-4 hover:shadow-md transition-shadow cursor-pointer"
             onClick={() => handleViewRate(rate)}
           >
-            <div className="space-y-3">
-              {/* Type */}
-              <div className="flex items-center gap-2">
-                {getRateTypeIcon(rate.rateType)}
-                <Badge className={getRateTypeColor(rate.rateType)}>{rate.rateType}</Badge>
-                {rate.isArchived && (
-                  <Badge variant="outline" className="text-gray-500">Archived</Badge>
-                )}
+            <div className="space-y-2">
+              {/* Top row: Name left, Type right */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="font-medium text-gray-900 truncate">
+                  {rate.name}
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {getRateTypeIcon(rate.rateType)}
+                  <Badge className={getRateTypeColor(rate.rateType)}>{rate.rateType}</Badge>
+                  {rate.isArchived && (
+                    <Badge variant="outline" className="text-gray-500">Archived</Badge>
+                  )}
+                </div>
               </div>
 
-              {/* Name */}
-              <div>
-                <div className="font-medium text-gray-900">{rate.name}</div>
-                {rate.description && (
-                  <div className="text-sm text-gray-500 mt-1">{rate.description}</div>
-                )}
-              </div>
+              {/* Description (optional) */}
+              {rate.description && (
+                <div className="text-sm text-gray-500 truncate">{rate.description}</div>
+              )}
 
               {/* Amount */}
               <div className="text-sm font-semibold text-gray-900">
