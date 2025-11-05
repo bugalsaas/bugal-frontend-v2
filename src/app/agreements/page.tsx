@@ -194,10 +194,8 @@ export default function AgreementsPage() {
     title: 'Agreements',
     subtitle: 'Agreements overview',
     icon: FileText,
-    showAddButton: true, // Keep for desktop header
-    addButtonText: 'New',
+    showAddButton: false, // Hide from header - moved to list row
     showAddButtonInDrawer: false, // Don't show in drawer on mobile
-    onAddClick: handleAddAgreement,
     onApply: handleApply,
     onClear: handleClear,
     onDrawerOpenChange: handleDrawerOpenChange,
@@ -253,6 +251,12 @@ export default function AgreementsPage() {
           onDraftAgreement={handleDraftAgreement}
           onNotifyAgreement={handleNotifyAgreement}
           onDuplicateAgreement={handleDuplicateAgreement}
+          // Filter props (desktop uses applied filters, mobile uses drawer)
+          statusFilter={statusFilter}
+          contactFilter={contactFilter}
+          onStatusFilterChange={(value) => setStatusFilter(value)}
+          onContactFilterChange={(value) => setContactFilter(value === '-1' ? '' : value)}
+          contacts={contacts}
         />
       </div>
 

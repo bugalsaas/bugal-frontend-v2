@@ -19,6 +19,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ContactsListProps {
   contacts: Contact[];
@@ -29,6 +31,11 @@ interface ContactsListProps {
   onAddContact: () => void;
   onEditContact: (contact: Contact) => void;
   onViewContact: (contact: Contact) => void;
+  // Filter props
+  searchValue?: string;
+  contactTypeFilter?: ContactType;
+  onSearchChange?: (value: string) => void;
+  onFilterChange?: (value: ContactType) => void;
 }
 
 export function ContactsList({ 
@@ -39,7 +46,11 @@ export function ContactsList({
   reloadList,
   onAddContact, 
   onEditContact, 
-  onViewContact 
+  onViewContact,
+  searchValue = '',
+  contactTypeFilter = ContactType.All,
+  onSearchChange,
+  onFilterChange,
 }: ContactsListProps) {
   const router = useRouter();
 
@@ -137,19 +148,63 @@ export function ContactsList({
 
   return (
     <div className="space-y-6">
-      {/* Results Summary */}
-      <div className="flex items-center justify-between">
+      {/* Results Summary with Search, Filter, and Button */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <p className="text-sm text-gray-600">
           {total} contact{total !== 1 ? 's' : ''} found
         </p>
-        <Button 
-          onClick={onAddContact}
-          className="flex items-center gap-2"
-          size="sm"
-        >
-          <Plus className="h-4 w-4" />
-          New Contact
-        </Button>
+        {/* Search, Filter, and New Contact button - Desktop only */}
+        <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+          {onSearchChange && (
+            <div className="relative flex-1 sm:flex-initial sm:min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search contacts..."
+                className="pl-10 w-full"
+                value={searchValue}
+                onChange={(e) => onSearchChange(e.target.value)}
+              />
+            </div>
+          )}
+          {onFilterChange && (
+            <Select
+              value={contactTypeFilter}
+              onValueChange={(value) => onFilterChange(value as ContactType)}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ContactType.All}>All</SelectItem>
+                <SelectItem value={ContactType.Client}>Client</SelectItem>
+                <SelectItem value={ContactType.Organisation}>Organisation</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          {onAddContact && (
+            <Button 
+              onClick={onAddContact}
+              className="flex items-center gap-2"
+              size="sm"
+            >
+              <Plus className="h-4 w-4" />
+              New Contact
+            </Button>
+          )}
+        </div>
+        {/* New Contact button - Mobile only */}
+        {onAddContact && (
+          <div className="md:hidden">
+            <Button 
+              onClick={onAddContact}
+              className="flex items-center gap-2"
+              size="sm"
+            >
+              <Plus className="h-4 w-4" />
+              New Contact
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Contacts List */}

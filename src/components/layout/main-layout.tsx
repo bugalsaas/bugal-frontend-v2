@@ -273,39 +273,35 @@ export function MainLayout({
             <div className="space-y-6">
               {/* Search and Actions */}
               {(headerConfig.showSearch || headerConfig.showFilters || headerConfig.showAddButton || headerConfig.customFilterComponent) && (
-                <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-                  <div className="flex flex-col sm:flex-row gap-3 sm:items-center flex-1 sm:max-w-md">
-                    {headerConfig.showSearch && (
-                      <div className="relative flex-1 sm:flex-initial">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                          placeholder={headerConfig.searchPlaceholder || "Search..."}
-                          className="pl-10 w-full"
-                          value={searchTerm}
-                          onChange={handleSearchChange}
-                        />
-                      </div>
-                    )}
-                    {headerConfig.customFilterComponent && (
-                      <div className="w-full sm:w-auto">
-                        {headerConfig.customFilterComponent}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-3 flex-shrink-0">
-                    {headerConfig.showFilters && (
-                      <Button variant="outline" className="flex items-center space-x-2" onClick={handleFilterClick}>
-                        <Filter className="h-4 w-4" />
-                        <span className="hidden sm:inline">Filters</span>
-                      </Button>
-                    )}
-                    {headerConfig.showAddButton && (
-                      <Button onClick={handleAddClick} className="flex items-center space-x-2 w-full sm:w-auto">
-                        <Plus className="h-4 w-4" />
-                        <span>{headerConfig.addButtonText || "Add"}</span>
-                      </Button>
-                    )}
-                  </div>
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                  {headerConfig.showSearch && (
+                    <div className="relative flex-1 sm:flex-initial sm:min-w-[200px]">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder={headerConfig.searchPlaceholder || "Search..."}
+                        className="pl-10 w-full"
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                      />
+                    </div>
+                  )}
+                  {headerConfig.customFilterComponent && (
+                    <div className="w-full sm:w-auto">
+                      {headerConfig.customFilterComponent}
+                    </div>
+                  )}
+                  {headerConfig.showFilters && (
+                    <Button variant="outline" className="flex items-center space-x-2 flex-shrink-0" onClick={handleFilterClick}>
+                      <Filter className="h-4 w-4" />
+                      <span className="hidden sm:inline">Filters</span>
+                    </Button>
+                  )}
+                  {headerConfig.showAddButton && (
+                    <Button onClick={handleAddClick} className="flex items-center space-x-2 flex-shrink-0">
+                      <Plus className="h-4 w-4" />
+                      <span>{headerConfig.addButtonText || "Add"}</span>
+                    </Button>
+                  )}
                 </div>
               )}
 

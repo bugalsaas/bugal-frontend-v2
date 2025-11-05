@@ -112,13 +112,9 @@ export default function ContactsPage() {
   const headerConfig = {
     title: "Contacts",
     subtitle: "Contacts overview",
-    showSearch: true,
-    showAddButton: true, // Keep for desktop header
-    addButtonText: "New Contact",
+    showSearch: false, // Hide from header - moved to list row
+    showAddButton: false, // Hide from header - moved to list row
     showAddButtonInDrawer: false, // Don't show in drawer on mobile
-    searchPlaceholder: "Search contacts...",
-    onSearchChange: handleSearchChange,
-    onAddClick: handleAddContact,
     onApply: handleApply,
     onClear: handleClear,
     onDrawerOpenChange: handleDrawerOpenChange,
@@ -155,6 +151,11 @@ export default function ContactsPage() {
         onAddContact={handleAddContact}
         onEditContact={handleEditContact}
         onViewContact={handleViewContact}
+        // Filter props (desktop uses applied filters, mobile uses drawer)
+        searchValue={searchValue}
+        contactTypeFilter={contactTypeFilter}
+        onSearchChange={(value) => setSearchValue(value)}
+        onFilterChange={(value) => setContactTypeFilter(value)}
       />
       
       <ContactModal

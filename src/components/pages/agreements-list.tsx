@@ -20,6 +20,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Contact } from '@/lib/api/contacts-service';
 
 interface AgreementsListProps {
   agreements: Agreement[];
@@ -34,6 +36,12 @@ interface AgreementsListProps {
   onDraftAgreement?: (agreement: Agreement) => void;
   onNotifyAgreement?: (agreement: Agreement) => void;
   onDuplicateAgreement?: (agreement: Agreement) => void;
+  // Filter props
+  statusFilter?: AgreementStatus;
+  contactFilter?: string;
+  onStatusFilterChange?: (value: AgreementStatus) => void;
+  onContactFilterChange?: (value: string) => void;
+  contacts?: Contact[];
 }
 
 export function AgreementsList({ 
@@ -49,6 +57,11 @@ export function AgreementsList({
   onDraftAgreement,
   onNotifyAgreement,
   onDuplicateAgreement,
+  statusFilter,
+  contactFilter,
+  onStatusFilterChange,
+  onContactFilterChange,
+  contacts = [],
 }: AgreementsListProps) {
 
   const handleViewAgreement = (agreement: Agreement) => {
@@ -148,20 +161,69 @@ export function AgreementsList({
 
   return (
     <div className="space-y-4">
-      {/* Results Summary */}
-      <div className="flex items-center justify-between">
+      {/* Results Summary with Filters and Button */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <p className="text-sm text-gray-600">
           Showing {agreements.length} of {total} agreement{total !== 1 ? 's' : ''}
         </p>
+        {/* Filters and New Agreement button - Desktop only */}
+        <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+          {onStatusFilterChange && (
+            <Select
+              value={statusFilter || AgreementStatus.All}
+              onValueChange={(value) => onStatusFilterChange(value as AgreementStatus)}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={AgreementStatus.All}>All</SelectItem>
+                <SelectItem value={AgreementStatus.Draft}>Draft</SelectItem>
+                <SelectItem value={AgreementStatus.Completed}>Completed</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          {onContactFilterChange && (
+            <Select
+              value={contactFilter || '-1'}
+              onValueChange={onContactFilterChange}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by contact" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="-1">All Contacts</SelectItem>
+                {contacts.map((contact) => (
+                  <SelectItem key={contact.id} value={contact.id}>
+                    {contact.fullName || `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || contact.organisationName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {onAddAgreement && (
+            <Button 
+              onClick={onAddAgreement}
+              className="flex items-center gap-2"
+              size="sm"
+            >
+              <Plus className="h-4 w-4" />
+              New Agreement
+            </Button>
+          )}
+        </div>
+        {/* New Agreement button - Mobile only */}
         {onAddAgreement && (
-          <Button 
-            onClick={onAddAgreement}
-            className="flex items-center gap-2"
-            size="sm"
-          >
-            <Plus className="h-4 w-4" />
-            New Agreement
-          </Button>
+          <div className="md:hidden">
+            <Button 
+              onClick={onAddAgreement}
+              className="flex items-center gap-2"
+              size="sm"
+            >
+              <Plus className="h-4 w-4" />
+              New Agreement
+            </Button>
+          </div>
         )}
       </div>
 
