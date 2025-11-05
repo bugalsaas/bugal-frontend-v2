@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useShifts, useShiftActions } from '@/hooks/use-shifts';
-import { Shift, ShiftStatus, ShiftCategory } from '@/lib/api/shifts-service';
+import { Shift, ShiftStatus, ShiftCategory, DeleteShiftType } from '@/lib/api/shifts-service';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -95,10 +95,21 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
     }
   };
 
+  // Listen for scrollToToday event from parent
+  useEffect(() => {
+    const handleScrollToToday = () => {
+      scrollToToday();
+    };
+    window.addEventListener('scrollToToday', handleScrollToToday);
+    return () => {
+      window.removeEventListener('scrollToToday', handleScrollToToday);
+    };
+  }, [scrollToToday]);
+
   const handleDeleteShift = async (shiftId: string) => {
     if (confirm('Are you sure you want to delete this shift?')) {
       try {
-        await deleteShift(shiftId, 'single');
+        await deleteShift(shiftId, DeleteShiftType.Single);
         reloadList();
       } catch (error) {
         console.error('Failed to delete shift:', error);
@@ -239,8 +250,11 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
 
   return (
     <div className="space-y-6">
-      {/* Sticky Header with Filters and New Button */}
-      <div className="sticky top-[76px] z-30 bg-white border-b border-gray-200 shadow-sm py-4 mb-6 -mx-6 px-6">
+      {/* Mobile padding for fixed buttons bar */}
+      <div className="md:hidden h-[64px]"></div>
+      
+      {/* Sticky Header with Filters and New Button - Desktop only */}
+      <div className="hidden md:block sticky top-[76px] z-30 bg-white border-b border-gray-200 shadow-sm py-4 mb-6 -mx-6 px-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           {/* Filters Row */}
           <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -345,13 +359,6 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
             </Button>
           </div>
         </div>
-      </div>
-
-      {/* Results Summary */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600">
-          {total} shift{total !== 1 ? 's' : ''} found
-        </p>
       </div>
 
       {/* Load More Before Button */}

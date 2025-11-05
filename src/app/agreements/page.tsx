@@ -21,6 +21,10 @@ export default function AgreementsPage() {
   const [statusFilter, setStatusFilter] = useState<AgreementStatus>(AgreementStatus.All);
   const [contactFilter, setContactFilter] = useState<string>('');
 
+  // Local state for drawer filters (not applied until Apply is clicked)
+  const [drawerStatusFilter, setDrawerStatusFilter] = useState<AgreementStatus>(AgreementStatus.All);
+  const [drawerContactFilter, setDrawerContactFilter] = useState<string>('');
+
   const { setFilters, data: agreements, loading, error, total, reloadList, filterCounter } = useAgreements();
   const { data: contacts } = useContacts({ pageSize: 100 });
   const { 
@@ -36,7 +40,7 @@ export default function AgreementsPage() {
     isNotifying,
   } = useAgreementActions();
 
-  // Update filter when status or contact changes
+  // Update filter when status or contact changes (only for applied filters)
   useEffect(() => {
     setFilters({ 
       status: statusFilter !== AgreementStatus.All ? statusFilter : undefined,
@@ -144,18 +148,65 @@ export default function AgreementsPage() {
     setSelectedAgreement(null);
   };
 
+  const handleDrawerStatusFilterChange = (value: AgreementStatus) => {
+    // Update drawer filter value (not applied yet)
+    setDrawerStatusFilter(value);
+  };
+
+  const handleDrawerContactFilterChange = (value: string) => {
+    // Update drawer filter value (not applied yet)
+    setDrawerContactFilter(value);
+  };
+
+  const handleApply = () => {
+    // Apply the drawer values to actual filters
+    setStatusFilter(drawerStatusFilter);
+    setContactFilter(drawerContactFilter);
+  };
+
+  const handleClear = () => {
+    // Clear drawer values
+    setDrawerStatusFilter(AgreementStatus.All);
+    setDrawerContactFilter('');
+    // Also clear actual filters
+    setStatusFilter(AgreementStatus.All);
+    setContactFilter('');
+  };
+
+  // Sync drawer values when drawer opens
+  const handleDrawerOpenChange = React.useCallback((isOpen: boolean) => {
+    if (isOpen) {
+      // When drawer opens, sync drawer values with current filter values
+      setDrawerStatusFilter(statusFilter);
+      setDrawerContactFilter(contactFilter);
+    }
+  }, [statusFilter, contactFilter]);
+
+  // Calculate active filter count based on actual applied filters
+  const activeFilterCount = (() => {
+    let count = 0;
+    if (statusFilter !== AgreementStatus.All) count++;
+    if (contactFilter && contactFilter !== '-1' && contactFilter !== '') count++;
+    return count;
+  })();
+
   const headerConfig = {
     title: 'Agreements',
     subtitle: 'Agreements overview',
     icon: FileText,
-    showAddButton: true,
+    showAddButton: true, // Keep for desktop header
+    addButtonText: 'New',
+    showAddButtonInDrawer: false, // Don't show in drawer on mobile
     onAddClick: handleAddAgreement,
-    activeFilterCount: filterCounter,
+    onApply: handleApply,
+    onClear: handleClear,
+    onDrawerOpenChange: handleDrawerOpenChange,
+    activeFilterCount,
     customFilterComponent: (
       <div className="flex flex-col sm:flex-row gap-3 w-full">
         <Select
-          value={statusFilter}
-          onValueChange={(value) => setStatusFilter(value as AgreementStatus)}
+          value={drawerStatusFilter}
+          onValueChange={handleDrawerStatusFilterChange}
         >
           <SelectTrigger className="w-full sm:w-auto sm:min-w-[180px]">
             <SelectValue placeholder="Filter by status" />
@@ -167,8 +218,8 @@ export default function AgreementsPage() {
           </SelectContent>
         </Select>
         <Select
-          value={contactFilter || '-1'}
-          onValueChange={(value) => setContactFilter(value)}
+          value={drawerContactFilter || '-1'}
+          onValueChange={handleDrawerContactFilterChange}
         >
           <SelectTrigger className="w-full sm:w-auto sm:min-w-[180px]">
             <SelectValue placeholder="Filter by contact" />
@@ -194,6 +245,7 @@ export default function AgreementsPage() {
           loading={loading}
           error={error}
           total={total}
+          onAddAgreement={handleAddAgreement}
           onViewAgreement={handleViewAgreement}
           onEditAgreement={handleEditAgreement}
           onDeleteAgreement={handleDeleteAgreement}

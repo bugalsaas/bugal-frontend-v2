@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Calendar,
   User,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,7 @@ interface AgreementsListProps {
   loading: boolean;
   error: string | null;
   total: number;
+  onAddAgreement?: () => void;
   onViewAgreement?: (agreement: Agreement) => void;
   onEditAgreement?: (agreement: Agreement) => void;
   onDeleteAgreement?: (agreement: Agreement) => void;
@@ -39,6 +41,7 @@ export function AgreementsList({
   loading,
   error,
   total,
+  onAddAgreement,
   onViewAgreement, 
   onEditAgreement, 
   onDeleteAgreement,
@@ -146,8 +149,20 @@ export function AgreementsList({
   return (
     <div className="space-y-4">
       {/* Results Summary */}
-      <div className="flex items-center space-x-2 text-sm text-gray-600">
-        <span>Showing {agreements.length} of {total} agreements</span>
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-600">
+          Showing {agreements.length} of {total} agreement{total !== 1 ? 's' : ''}
+        </p>
+        {onAddAgreement && (
+          <Button 
+            onClick={onAddAgreement}
+            className="flex items-center gap-2"
+            size="sm"
+          >
+            <Plus className="h-4 w-4" />
+            New Agreement
+          </Button>
+        )}
       </div>
 
       {/* Mobile Card View */}

@@ -1,15 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { MainLayout } from '@/components/layout/wrapped-main-layout';
 import { ShiftsList } from '@/components/pages/shifts-list';
 import { ShiftModal } from '@/components/modals/shift-modal';
 import { CompleteShiftModal } from '@/components/modals/complete-shift-modal';
 import { CancelShiftModal } from '@/components/modals/cancel-shift-modal';
 import { NotifyShiftModal } from '@/components/modals/notify-shift-modal';
-import { Shift } from '@/lib/api/shifts-service';
+import { Shift, ShiftStatus } from '@/lib/api/shifts-service';
 import { useShifts } from '@/hooks/use-shifts';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { UserSelector } from '@/components/ui/user-selector';
+import { useContacts } from '@/hooks/use-contacts';
+import { Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function ShiftsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,7 +23,27 @@ export default function ShiftsPage() {
   const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'new' | 'edit' | 'view' | 'duplicate'>('new');
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
-  const { reloadList } = useShifts();
+  const { reloadList, filter, setFilter, filterCounter } = useShifts();
+  const { data: contacts } = useContacts({ pageSize: 100 });
+
+  // Applied filters (what's actually filtering the data)
+  const [statusFilter, setStatusFilter] = useState<ShiftStatus>(filter.status || ShiftStatus.All);
+  const [assigneeFilter, setAssigneeFilter] = useState<string>(filter.assignee || '-1');
+  const [contactFilter, setContactFilter] = useState<string>(filter.contact || '');
+
+  // Local state for drawer filters (not applied until Apply is clicked)
+  const [drawerStatusFilter, setDrawerStatusFilter] = useState<ShiftStatus>(ShiftStatus.All);
+  const [drawerAssigneeFilter, setDrawerAssigneeFilter] = useState<string>('-1');
+  const [drawerContactFilter, setDrawerContactFilter] = useState<string>('');
+
+  // Update filter when applied filter values change
+  React.useEffect(() => {
+    setFilter({
+      status: statusFilter !== ShiftStatus.All ? statusFilter : undefined,
+      assignee: assigneeFilter !== '-1' ? assigneeFilter : undefined,
+      contact: contactFilter && contactFilter !== '' ? contactFilter : undefined,
+    });
+  }, [statusFilter, assigneeFilter, contactFilter, setFilter]);
 
   const handleAddShift = () => {
     console.log('handleAddShift called');
@@ -84,11 +109,105 @@ export default function ShiftsPage() {
     setSelectedShift(null);
   };
 
+  const handleDrawerStatusFilterChange = (value: ShiftStatus) => {
+    setDrawerStatusFilter(value);
+  };
+
+  const handleDrawerAssigneeFilterChange = (value: string) => {
+    setDrawerAssigneeFilter(value);
+  };
+
+  const handleDrawerContactFilterChange = (value: string) => {
+    // Update drawer filter value (not applied yet)
+    setDrawerContactFilter(value === 'all' ? '' : value);
+  };
+
+  const handleApply = () => {
+    setStatusFilter(drawerStatusFilter);
+    setAssigneeFilter(drawerAssigneeFilter);
+    setContactFilter(drawerContactFilter);
+  };
+
+  const handleClear = () => {
+    setDrawerStatusFilter(ShiftStatus.All);
+    setDrawerAssigneeFilter('-1');
+    setDrawerContactFilter('');
+    setStatusFilter(ShiftStatus.All);
+    setAssigneeFilter('-1');
+    setContactFilter('');
+  };
+
+  // Sync drawer values when drawer opens
+  const handleDrawerOpenChange = useCallback((isOpen: boolean) => {
+    if (isOpen) {
+      // When drawer opens, sync drawer values with current filter values
+      setDrawerStatusFilter(statusFilter);
+      setDrawerAssigneeFilter(assigneeFilter);
+      setDrawerContactFilter(contactFilter || '');
+    }
+  }, [statusFilter, assigneeFilter, contactFilter]);
+
+  // Calculate active filter count based on actual applied filters
+  const activeFilterCount = (() => {
+    let count = 0;
+    if (statusFilter !== ShiftStatus.All) count++;
+    if (assigneeFilter !== '-1') count++;
+    if (contactFilter && contactFilter !== '') count++;
+    return count;
+  })();
+
   const headerConfig = {
     title: "Shifts",
     subtitle: "Shifts overview",
     showSearch: false,
-    showAddButton: false,
+    showFilters: true, // Show filters in drawer
+    showAddButton: false, // We handle buttons separately
+    showAddButtonInDrawer: false,
+    onApply: handleApply,
+    onClear: handleClear,
+    onDrawerOpenChange: handleDrawerOpenChange,
+    activeFilterCount,
+    customFilterComponent: (
+      <div className="flex flex-col gap-3 w-full">
+        <Select
+          value={drawerStatusFilter}
+          onValueChange={handleDrawerStatusFilterChange}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ShiftStatus.All}>All statuses</SelectItem>
+            <SelectItem value={ShiftStatus.Pending}>Pending</SelectItem>
+            <SelectItem value={ShiftStatus.Completed}>Completed</SelectItem>
+            <SelectItem value={ShiftStatus.Cancelled}>Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+        <UserSelector
+          value={drawerAssigneeFilter}
+          onValueChange={handleDrawerAssigneeFilterChange}
+          className="w-full"
+        />
+        <Select
+          value={drawerContactFilter || 'all'}
+          onValueChange={(value) => handleDrawerContactFilterChange(value)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="All contacts" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All contacts</SelectItem>
+            {contacts?.map((contact) => (
+              <SelectItem key={contact.id} value={contact.id}>
+                {contact.firstName && contact.lastName
+                  ? `${contact.firstName} ${contact.lastName}`
+                  : contact.organisationName || contact.email || 'Unknown'}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    ),
   };
 
   return (
@@ -96,15 +215,42 @@ export default function ShiftsPage() {
       activeNavItem="shifts"
       headerConfig={headerConfig}
     >
-          <ShiftsList 
-            onAddShift={handleAddShift}
-            onEditShift={handleEditShift}
-            onViewShift={handleViewShift}
-            onDuplicateShift={handleDuplicateShift}
-            onCompleteShift={handleCompleteShift}
-            onCancelShift={handleCancelShift}
-            onNotifyShift={handleNotifyShift}
-          />
+      {/* Fixed Action Buttons Bar - Mobile only */}
+      <div className="md:hidden fixed top-[56px] left-0 right-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+        <Button
+          variant="outline"
+          onClick={() => {
+            // Scroll to today - dispatch event that ShiftsList will listen for
+            const event = new CustomEvent('scrollToToday');
+            window.dispatchEvent(event);
+          }}
+          className="relative p-0 h-10 w-10 flex flex-col items-center justify-center"
+          title="Jump to today"
+        >
+          <Calendar className="h-9 w-9 text-gray-600 absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+          <span className="relative z-10 text-xs font-bold text-gray-800" style={{ marginTop: '2px' }}>
+            {new Date().getDate()}
+          </span>
+        </Button>
+        <Button 
+          type="button"
+          onClick={handleAddShift} 
+          className="flex-1 flex items-center justify-center gap-2"
+        >
+          <span className="text-lg">+</span>
+          New Shift
+        </Button>
+      </div>
+
+      <ShiftsList 
+        onAddShift={handleAddShift}
+        onEditShift={handleEditShift}
+        onViewShift={handleViewShift}
+        onDuplicateShift={handleDuplicateShift}
+        onCompleteShift={handleCompleteShift}
+        onCancelShift={handleCancelShift}
+        onNotifyShift={handleNotifyShift}
+      />
       
       <ErrorBoundary>
         <ShiftModal

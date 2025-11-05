@@ -1,11 +1,11 @@
 'use client';
 
 import { useAuth } from '@/contexts/auth-context';
-import { MainLayout as BaseMainLayout, MainLayoutProps } from '@/components/layout/main-layout';
-import { ReactNode } from 'react';
+import { MainLayout as BaseMainLayout } from '@/components/layout/main-layout';
+import { MainLayoutProps } from '@/lib/navigation-config';
 
 interface WrappedMainLayoutProps extends MainLayoutProps {
-  children: ReactNode;
+  // All props come from MainLayoutProps
 }
 
 export function MainLayout(props: WrappedMainLayoutProps) {

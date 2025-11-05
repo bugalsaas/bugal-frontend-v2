@@ -13,6 +13,7 @@ import {
   Archive,
   Loader2,
   AlertCircle,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 
 interface RatesListProps {
+  rates?: Rate[];
+  total?: number;
+  onAddRate?: () => void;
   onViewRate?: (rate: Rate) => void;
   onEditRate?: (rate: Rate) => void;
   onDeleteRate?: (rate: Rate) => void;
@@ -29,12 +33,25 @@ interface RatesListProps {
 }
 
 export function RatesList({ 
+  rates: ratesProp,
+  total: totalProp,
+  onAddRate,
   onViewRate, 
   onEditRate, 
   onDeleteRate, 
   onArchiveRate 
 }: RatesListProps) {
-  const { data: rates, loading, error, total, filterCounter, filters, setFilters, pagination, setPagination } = useRates();
+  // Always use hook (parent controls filters via setFilters)
+  const ratesHook = useRates();
+  const rates = ratesProp ?? ratesHook.data ?? [];
+  const total = totalProp ?? ratesHook.total ?? 0;
+  const loading = ratesProp === undefined ? ratesHook.loading : false;
+  const error = ratesProp === undefined ? ratesHook.error : null;
+  const filterCounter = ratesProp === undefined ? ratesHook.filterCounter : 0;
+  const filters = ratesProp === undefined ? ratesHook.filters : { search: '', rateType: undefined, isArchived: false };
+  const setFilters = ratesProp === undefined ? ratesHook.setFilters : () => {};
+  const pagination = ratesProp === undefined ? ratesHook.pagination : { pageNumber: 1, pageSize: 100 };
+  const setPagination = ratesProp === undefined ? ratesHook.setPagination : () => {};
 
   const currentPage = pagination.pageNumber || 1;
   const pageSize = pagination.pageSize || 100;
@@ -116,6 +133,23 @@ export function RatesList({
 
   return (
     <div className="space-y-4">
+      {/* Results Summary with New Button */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-600">
+          Showing {rates.length} of {total} rate{total !== 1 ? 's' : ''}
+        </p>
+        {onAddRate && (
+          <Button 
+            onClick={onAddRate}
+            className="flex items-center gap-2"
+            size="sm"
+          >
+            <Plus className="h-4 w-4" />
+            New Rate
+          </Button>
+        )}
+      </div>
+
       {/* Filters - Desktop only (Mobile filters are in drawer) */}
       <div className="hidden md:flex flex-col md:flex-row md:items-end md:justify-between gap-3">
         <div className="flex-1 flex flex-col md:flex-row gap-3">
@@ -150,10 +184,9 @@ export function RatesList({
           )}
         </div>
       </div>
-      {/* Filter Summary */}
+      {/* Filter Summary - Desktop only */}
       {filterCounter > 0 && (
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <span>Showing {rates.length} of {total} rates</span>
+        <div className="hidden md:flex items-center space-x-2 text-sm text-gray-600">
           <Badge variant="secondary">{filterCounter} filter{filterCounter > 1 ? 's' : ''} applied</Badge>
         </div>
       )}

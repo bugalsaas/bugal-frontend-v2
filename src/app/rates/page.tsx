@@ -16,8 +16,18 @@ export default function RatesPage() {
   const [selectedRate, setSelectedRate] = useState<Rate | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Applied filters (what's actually filtering the data)
+  const [searchValue, setSearchValue] = useState('');
+  const [rateTypeFilter, setRateTypeFilter] = useState<RateType | undefined>(undefined);
+  const [isArchivedFilter, setIsArchivedFilter] = useState<boolean>(false);
+
+  // Local state for drawer filters (not applied until Apply is clicked)
+  const [drawerSearchValue, setDrawerSearchValue] = useState('');
+  const [drawerRateTypeFilter, setDrawerRateTypeFilter] = useState<RateType | undefined>(undefined);
+  const [drawerIsArchivedFilter, setDrawerIsArchivedFilter] = useState<boolean>(false);
+
   // Get rates data and filters
-  const { filterCounter, filters, setFilters } = useRates();
+  const { filterCounter, filters, setFilters, data: rates, total } = useRates();
 
   const { 
     createRate, 
@@ -109,26 +119,89 @@ export default function RatesPage() {
     setSelectedRate(null);
   };
 
+  // Update filters when applied filter values change
+  React.useEffect(() => {
+    setFilters({
+      search: searchValue,
+      rateType: rateTypeFilter,
+      isArchived: isArchivedFilter,
+    });
+  }, [searchValue, rateTypeFilter, isArchivedFilter, setFilters]);
+
   const handleSearchChange = (value: string) => {
-    setFilters({ search: value });
+    // Update drawer search value (not applied yet)
+    setDrawerSearchValue(value);
   };
+
+  const handleDrawerRateTypeChange = (value: string) => {
+    // Update drawer filter value (not applied yet)
+    setDrawerRateTypeFilter(value === 'all' ? undefined : (value as RateType));
+  };
+
+  const handleDrawerArchivedChange = (checked: boolean) => {
+    // Update drawer filter value (not applied yet)
+    setDrawerIsArchivedFilter(checked);
+  };
+
+  const handleApply = () => {
+    // Apply the drawer values to actual filters
+    setSearchValue(drawerSearchValue);
+    setRateTypeFilter(drawerRateTypeFilter);
+    setIsArchivedFilter(drawerIsArchivedFilter);
+  };
+
+  const handleClear = () => {
+    // Clear drawer values
+    setDrawerSearchValue('');
+    setDrawerRateTypeFilter(undefined);
+    setDrawerIsArchivedFilter(false);
+    // Also clear actual filters
+    setSearchValue('');
+    setRateTypeFilter(undefined);
+    setIsArchivedFilter(false);
+  };
+
+  // Sync drawer values when drawer opens
+  const handleDrawerOpenChange = React.useCallback((isOpen: boolean) => {
+    if (isOpen) {
+      // When drawer opens, sync drawer values with current filter values
+      setDrawerSearchValue(searchValue);
+      setDrawerRateTypeFilter(rateTypeFilter);
+      setDrawerIsArchivedFilter(isArchivedFilter);
+      // Also trigger onSearchChange to sync the drawer's internal search value
+      handleSearchChange(searchValue);
+    }
+  }, [searchValue, rateTypeFilter, isArchivedFilter]);
+
+  // Calculate active filter count based on actual applied filters
+  const activeFilterCount = (() => {
+    let count = 0;
+    if (searchValue && searchValue.length > 0) count++;
+    if (rateTypeFilter !== undefined) count++;
+    if (isArchivedFilter) count++;
+    return count;
+  })();
 
   const headerConfig = {
     title: 'Rates',
     subtitle: 'Rates overview',
     icon: DollarSign,
     showSearch: true,
-    showAddButton: true,
+    showAddButton: true, // Keep for desktop header
     addButtonText: 'New',
+    showAddButtonInDrawer: false, // Don't show in drawer on mobile
     searchPlaceholder: 'Start typing to filter results...',
     onSearchChange: handleSearchChange,
     onAddClick: handleAddRate,
-    activeFilterCount: filterCounter,
+    onApply: handleApply,
+    onClear: handleClear,
+    onDrawerOpenChange: handleDrawerOpenChange,
+    activeFilterCount,
     customFilterComponent: (
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <Select
-          value={filters.rateType || 'all'}
-          onValueChange={(v) => setFilters({ rateType: v === 'all' ? undefined : (v as RateType) })}
+          value={drawerRateTypeFilter || 'all'}
+          onValueChange={handleDrawerRateTypeChange}
         >
           <SelectTrigger className="w-full sm:w-auto sm:min-w-[180px]">
             <SelectValue placeholder="All types" />
@@ -142,8 +215,8 @@ export default function RatesPage() {
         <div className="flex items-center gap-2">
           <Checkbox
             id="archived"
-            checked={!!filters.isArchived}
-            onCheckedChange={(v) => setFilters({ isArchived: !!v })}
+            checked={drawerIsArchivedFilter}
+            onCheckedChange={handleDrawerArchivedChange}
           />
           <label htmlFor="archived" className="text-sm text-gray-700 cursor-pointer">Show archived</label>
         </div>
@@ -155,6 +228,9 @@ export default function RatesPage() {
     <MainLayout activeNavItem="rates" headerConfig={headerConfig}>
       <div className="space-y-6">
         <RatesList
+          rates={rates}
+          total={total}
+          onAddRate={handleAddRate}
           onViewRate={handleViewRate}
           onEditRate={handleEditRate}
           onDeleteRate={handleDeleteRate}
