@@ -9,6 +9,7 @@ import { CancelShiftModal } from '@/components/modals/cancel-shift-modal';
 import { NotifyShiftModal } from '@/components/modals/notify-shift-modal';
 import { Shift } from '@/lib/api/shifts-service';
 import { useShifts } from '@/hooks/use-shifts';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 export default function ShiftsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -20,9 +21,11 @@ export default function ShiftsPage() {
   const { reloadList } = useShifts();
 
   const handleAddShift = () => {
+    console.log('handleAddShift called');
     setModalMode('new');
     setSelectedShift(null);
     setIsModalOpen(true);
+    console.log('Modal state set to open');
   };
 
   const handleEditShift = (shift: Shift) => {
@@ -103,16 +106,18 @@ export default function ShiftsPage() {
             onNotifyShift={handleNotifyShift}
           />
       
-      <ShiftModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedShift(null);
-        }}
-        mode={modalMode}
-        shift={selectedShift || undefined}
-        onSave={handleSaveShift}
-      />
+      <ErrorBoundary>
+        <ShiftModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedShift(null);
+          }}
+          mode={modalMode}
+          shift={selectedShift || undefined}
+          onSave={handleSaveShift}
+        />
+      </ErrorBoundary>
 
       <CompleteShiftModal
         isOpen={isCompleteModalOpen}

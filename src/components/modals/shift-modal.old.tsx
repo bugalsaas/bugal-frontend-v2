@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,11 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Shift, 
   ShiftStatus, 
   ShiftCategory, 
+  ExpenseType, 
+  RateType,
   Expense,
   Attachment 
 } from '@/lib/api/shifts-service';
@@ -56,14 +59,15 @@ const shiftSchema = z.object({
   idAssignee: z.string().min(1, 'Assignee is required'),
   idRate: z.string().min(1, 'Rate is required'),
   location: z.string().min(1, 'Location is required').max(255, 'Location must be 255 characters or less'),
-  startDate: z.string().min(1, 'Start date and time is required'),
-  duration: z.number().min(900, 'Duration must be at least 15 minutes'),
+  startDate: z.string().min(1, 'Start date and time is required'), // ISO DateTime string
+  duration: z.number().min(900, 'Duration must be at least 15 minutes'), // Duration in seconds
   tz: z.string().min(1, 'Timezone is required'),
   category: z.string().optional(),
   comments: z.string().max(1000, 'Comments must be 1000 characters or less').optional(),
   notes: z.string().max(1000, 'Notes must be 1000 characters or less').optional(),
   recurrenceRule: z.string().optional(),
 }).refine((data) => {
+  // Ensure assignee is set before submission
   return data.idAssignee && data.idAssignee.length > 0;
 }, {
   message: 'Assignee is required',
@@ -81,21 +85,37 @@ interface ShiftModalProps {
 }
 
 export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalProps) {
+  // CRITICAL: Log at the very start of component
+  console.log('=== ShiftModal FUNCTION CALLED ===', { isOpen, mode });
+  
   const [activeTab, setActiveTab] = useState('details');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [fetchedShift, setFetchedShift] = useState<Shift | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | undefined>();
   const [rateAmountExclGst, setRateAmountExclGst] = useState<number>(0);
 
   const { user } = useAuth();
   const isReadOnly = mode === 'view';
+  const isCompleteMode = mode === 'complete';
   const hasUsersDataAllScope = user?.scopes?.includes('users:data:all') ?? false;
+
+  // Debug logging
+  useEffect(() => {
+    if (isOpen) {
+      console.log('ShiftModal opened:', { isOpen, mode, hasShift: !!shift });
+    }
+  }, [isOpen, mode, shift]);
 
   const { 
     createShift, 
     updateShift, 
     completeShift, 
+    cancelShift, 
+    deleteShift,
     isSaving, 
+    isCompleting 
   } = useShiftActions();
   
   const { getOne, loading: isLoadingShift } = useShift();
@@ -105,6 +125,7 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
 
   const form = useForm<ShiftFormData>({
     resolver: zodResolver(shiftSchema),
+    mode: 'onChange',
     defaultValues: {
       summary: '',
       idContact: '',
@@ -112,7 +133,7 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
       idRate: '',
       location: '',
       startDate: '',
-      duration: 3600,
+      duration: 3600, // 1 hour in seconds
       tz: defaultTimezone,
       category: ShiftCategory.AssistanceDailyLife,
       comments: '',
@@ -121,67 +142,114 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
     },
   });
 
-  // Track shift ID to prevent unnecessary reloads
-  const shiftIdRef = React.useRef<string | 'new' | undefined>();
-  
+  // Log form state for debugging
   useEffect(() => {
-    if (!isOpen) {
-      shiftIdRef.current = undefined;
+    if (isOpen && mode === 'new') {
+      console.log('Form initialized for new shift:', {
+        idAssignee: form.getValues('idAssignee'),
+        user: user?.id,
+        formErrors: form.formState.errors,
+      });
+    }
+  }, [isOpen, mode, user?.id]); // Removed form from dependencies
+
+  // Ensure assignee is set when user is available
+  useEffect(() => {
+    if (isOpen && mode === 'new' && user?.id) {
+      const currentAssignee = form.getValues('idAssignee');
+      if (!currentAssignee || currentAssignee === '') {
+        form.setValue('idAssignee', user.id, { shouldValidate: false });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, user?.id, mode]); // Removed form from dependencies to prevent infinite loop
+
+  // Fetch full shift details when modal opens in edit/view/duplicate modes
+  useEffect(() => {
+    if (isOpen && shift?.id && (mode === 'edit' || mode === 'view' || mode === 'duplicate')) {
+      const fetchShiftData = async () => {
+        try {
+          setFetchError(null);
+          const fullShift = await getOne(shift.id);
+          setFetchedShift(fullShift);
+        } catch (error) {
+          console.error('Failed to fetch shift:', error);
+          setFetchError(error instanceof Error ? error.message : 'Failed to load shift');
+          // Fallback to the shift prop if fetch fails
+          setFetchedShift(shift);
+        }
+      };
+      
+      fetchShiftData();
+    } else if (isOpen && mode === 'new') {
+      // For new mode, reset everything
+      setFetchedShift(null);
+      setFetchError(null);
+      // Don't call form.reset() here - let the other useEffect handle it to prevent infinite loops
+      setExpenses([]);
+      setAttachments([]);
+    } else if (!isOpen) {
+      // Reset when modal closes
+      setFetchedShift(null);
+      setFetchError(null);
+    }
+  }, [isOpen, shift?.id, mode, getOne]);
+
+  // Track last reset to prevent infinite loops
+  const lastResetRef = React.useRef<string>('');
+  
+  // Reset form when fetched shift data changes
+  useEffect(() => {
+    // Use fetchedShift if available, otherwise fallback to shift prop
+    const shiftToUse = fetchedShift || shift;
+    
+    // Create a unique key for this reset operation
+    const resetKey = `${shiftToUse?.id || 'new'}-${mode}-${isOpen}`;
+    
+    // Skip if we've already reset for this combination
+    if (lastResetRef.current === resetKey) {
       return;
     }
-
-    const currentShiftId = shift?.id || 'new';
     
-    // Only update if the shift ID actually changed
-    if (currentShiftId !== shiftIdRef.current) {
-      shiftIdRef.current = currentShiftId;
+    if (shiftToUse) {
+      const startDate = new Date(shiftToUse.startDate);
+      const formData = {
+        summary: mode === 'duplicate' ? `${shiftToUse.summary} (Copy)` : shiftToUse.summary,
+        idContact: shiftToUse.idContact || shiftToUse.contact?.id || '',
+        idAssignee: shiftToUse.idAssignee || shiftToUse.assignee?.id || '',
+        idRate: shiftToUse.idRate || '',
+        location: shiftToUse.location || '',
+        startDate: startDate.toISOString(), // Full ISO DateTime string
+        duration: shiftToUse.duration || 3600, // Duration in seconds
+        tz: shiftToUse.tz || defaultTimezone,
+        category: shiftToUse.category || ShiftCategory.AssistanceDailyLife,
+        comments: shiftToUse.comments || '',
+        notes: mode === 'duplicate' ? '' : (shiftToUse.notes || ''), // Clear notes for duplicate
+        recurrenceRule: mode === 'duplicate' ? '' : (shiftToUse.recurrenceRule || ''), // Clear recurrence for duplicate
+      };
       
-      if (shift && (mode === 'edit' || mode === 'view' || mode === 'duplicate')) {
-        // Load full shift data if needed
-        if (!shift.expenses || !shift.attachments) {
-          getOne(shift.id).then((loaded) => {
-            setExpenses(loaded.expenses || []);
-            setAttachments(loaded.attachments || []);
-            setRateAmountExclGst(loaded.rateAmountExclGst || 0);
-            if (loaded.contact) {
-              setSelectedContact(loaded.contact as any);
-            }
-          }).catch((error) => {
-            console.error('Failed to load shift:', error);
-            // Fallback to shift prop data
-            setExpenses(shift.expenses || []);
-            setAttachments(shift.attachments || []);
-            setRateAmountExclGst(shift.rateAmountExclGst || 0);
-            if (shift.contact) {
-              setSelectedContact(shift.contact as any);
-            }
-          });
-        } else {
-          setExpenses(shift.expenses || []);
-          setAttachments(shift.attachments || []);
-          setRateAmountExclGst(shift.rateAmountExclGst || 0);
-          if (shift.contact) {
-            setSelectedContact(shift.contact as any);
-          }
-        }
-
-        const startDate = new Date(shift.startDate);
-        form.reset({
-          summary: mode === 'duplicate' ? `${shift.summary} (Copy)` : shift.summary,
-          idContact: shift.idContact || shift.contact?.id || '',
-          idAssignee: shift.idAssignee || shift.assignee?.id || '',
-          idRate: shift.idRate || '',
-          location: shift.location || '',
-          startDate: startDate.toISOString(),
-          duration: shift.duration || 3600,
-          tz: shift.tz || defaultTimezone,
-          category: shift.category || ShiftCategory.AssistanceDailyLife,
-          comments: shift.comments || '',
-          notes: mode === 'duplicate' ? '' : (shift.notes || ''),
-          recurrenceRule: mode === 'duplicate' ? '' : (shift.recurrenceRule || ''),
-        });
+      form.reset(formData);
+      setRateAmountExclGst(shiftToUse.rateAmountExclGst || 0);
+      
+      // For duplicate mode, clear expenses and attachments
+      if (mode === 'duplicate') {
+        setExpenses([]);
+        setAttachments([]);
+        setSelectedContact(undefined);
       } else {
-        // New shift
+        setExpenses(shiftToUse.expenses || []);
+        setAttachments(shiftToUse.attachments || []);
+        // Set selected contact if available
+        if (shiftToUse.contact) {
+          setSelectedContact(shiftToUse.contact as any);
+        }
+      }
+      
+      lastResetRef.current = resetKey;
+    } else if (isOpen && mode === 'new') {
+      // Only reset for new mode when modal is actually open
+      if (lastResetRef.current !== resetKey) {
+        // Reset form for new mode
         form.reset({
           summary: '',
           idContact: '',
@@ -200,9 +268,20 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
         setAttachments([]);
         setSelectedContact(undefined);
         setRateAmountExclGst(0);
+        
+        lastResetRef.current = resetKey;
+      }
+    } else if (!isOpen) {
+      // When modal closes, just update the ref but don't reset (to avoid unnecessary re-renders)
+      if (lastResetRef.current !== resetKey) {
+        lastResetRef.current = resetKey;
       }
     }
-  }, [shift?.id, isOpen, mode, defaultTimezone, user?.id, getOne, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchedShift, shift, mode, isOpen, defaultTimezone, user?.id]); // Removed form from dependencies to prevent infinite loop
+
+  // CRITICAL: Log after all hooks
+  console.log('=== AFTER ALL HOOKS ===', { isOpen, mode });
 
   const onSubmit = async (data: ShiftFormData) => {
     try {
@@ -217,8 +296,8 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
         idAssignee: data.idAssignee,
         idRate: data.idRate,
         location: data.location,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+        startDate: startDate.toISOString(), // Backend expects ISO DateTime string
+        endDate: endDate.toISOString(), // Backend expects ISO DateTime string
         tz: data.tz,
         category: data.category,
         comments: data.comments || '',
@@ -229,8 +308,12 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
       if (mode === 'new') {
         const newShift = await createShift(shiftData as any);
         onSave?.(newShift);
-      } else if (mode === 'edit' && shift?.id) {
-        const updatedShift = await updateShift(shift.id, shiftData as any);
+      } else if (mode === 'edit' && (fetchedShift?.id || shift?.id)) {
+        const shiftId = fetchedShift?.id || shift?.id;
+        if (!shiftId) {
+          throw new Error('Shift ID is required for editing');
+        }
+        const updatedShift = await updateShift(shiftId, shiftData as any);
         onSave?.(updatedShift);
       } else if (mode === 'complete' && shift?.id) {
         const completedShift = await completeShift(shift.id, { isGstFree: false, notes: data.notes });
@@ -240,9 +323,11 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
       onClose();
     } catch (error) {
       console.error('Failed to save shift:', error);
+      // TODO: Show error toast/notification to user
     }
   };
 
+  // Handle "Use contact's address" button click
   const handleUseContactAddress = () => {
     if (!selectedContact) return;
     
@@ -299,33 +384,10 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
     };
   };
 
-  const getRecurrenceLabel = (recurrenceRule: string, startDate: string): string => {
-    if (!recurrenceRule || recurrenceRule === '' || recurrenceRule === 'none') {
-      return 'Does not repeat';
-    }
-    try {
-      // Simple parsing - could be enhanced with rrule library
-      if (recurrenceRule.includes('FREQ=DAILY')) return 'Daily';
-      if (recurrenceRule.includes('FREQ=WEEKLY')) return 'Weekly';
-      if (recurrenceRule.includes('FREQ=MONTHLY')) return 'Monthly';
-      if (recurrenceRule.includes('FREQ=YEARLY')) return 'Yearly';
-      return recurrenceRule;
-    } catch {
-      return recurrenceRule;
-    }
-  };
+  // CRITICAL: Log before render functions
+  console.log('=== BEFORE RENDER FUNCTIONS ===', { isOpen, mode });
 
-  const getModalTitle = () => {
-    if (mode === 'new') return 'Add New Shift';
-    if (mode === 'edit') return 'Edit Shift';
-    if (mode === 'view') return 'View Shift';
-    if (mode === 'complete') return 'Complete Shift';
-    if (mode === 'duplicate') return 'Duplicate Shift';
-    return 'Shift';
-  };
-
-  const shiftToDisplay = shift;
-
+  console.log('=== DEFINING renderDetailsTab ===');
   const renderDetailsTab = () => (
     <div className="space-y-6">
       {/* Basic Information */}
@@ -385,10 +447,13 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
 
           {hasUsersDataAllScope ? (
             <div>
-              <Label htmlFor="idAssignee">Assignee *</Label>
+              <Label htmlFor="idAssignee">
+                Assignee *
+              </Label>
               <UserSelector
                 value={form.watch('idAssignee') || user?.id || ''}
                 onValueChange={(value) => {
+                  // Don't allow selecting "All users" (-1) for shift assignee
                   if (value !== '-1') {
                     form.setValue('idAssignee', value);
                   }
@@ -518,7 +583,7 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
             value={form.watch('recurrenceRule')}
             onValueChange={(value) => form.setValue('recurrenceRule', value)}
             startDate={form.watch('startDate')}
-            disabled={isReadOnly || (!!shift?.id && mode === 'edit')}
+            disabled={isReadOnly || (!!(fetchedShift?.id || shift?.id) && mode === 'edit')}
           />
         </div>
       </div>
@@ -558,13 +623,15 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
       </div>
     </div>
   );
+  console.log('=== renderDetailsTab DEFINED ===');
 
+  console.log('=== DEFINING renderExpensesTab ===');
   const renderExpensesTab = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Expenses</h3>
         {!isReadOnly && (
-          <Button variant="outline" size="sm" type="button">
+          <Button variant="outline" size="sm">
             <Plus className="h-4 w-4 mr-2" />
             Add Expense
           </Button>
@@ -588,7 +655,7 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
                   </p>
                 </div>
                 {!isReadOnly && (
-                  <Button variant="ghost" size="sm" type="button">
+                  <Button variant="ghost" size="sm">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
@@ -599,13 +666,15 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
       )}
     </div>
   );
+  console.log('=== renderExpensesTab DEFINED ===');
 
+  console.log('=== DEFINING renderAttachmentsTab ===');
   const renderAttachmentsTab = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Attachments</h3>
         {!isReadOnly && (
-          <Button variant="outline" size="sm" type="button">
+          <Button variant="outline" size="sm">
             <Upload className="h-4 w-4 mr-2" />
             Upload File
           </Button>
@@ -632,11 +701,11 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="sm" type="button">
+                  <Button variant="ghost" size="sm">
                     <Download className="h-4 w-4" />
                   </Button>
                   {!isReadOnly && (
-                    <Button variant="ghost" size="sm" type="button">
+                    <Button variant="ghost" size="sm">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
@@ -648,10 +717,47 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
       )}
     </div>
   );
+  console.log('=== renderAttachmentsTab DEFINED ===');
 
+  // Helper function to format recurrence label for display
+  const getRecurrenceLabel = (recurrenceRule: string, startDate: string): string => {
+    if (!recurrenceRule || recurrenceRule === '' || recurrenceRule === 'none') {
+      return 'Does not repeat';
+    }
+
+    // Fallback to parsing the RRULE
+    if (recurrenceRule.includes('FREQ=DAILY')) return 'Daily';
+    if (recurrenceRule.includes('FREQ=WEEKLY')) {
+      if (recurrenceRule.includes('BYDAY=MO,TU,WE,TH,FR')) return 'Every weekday (Monday to Friday)';
+      if (recurrenceRule.includes('INTERVAL=2')) return 'Fortnightly';
+      if (startDate) {
+        const date = new Date(startDate);
+        const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
+        return `Weekly on ${dayOfWeek}`;
+      }
+      return 'Weekly';
+    }
+    if (recurrenceRule.includes('FREQ=MONTHLY')) return 'Monthly';
+    if (recurrenceRule.includes('FREQ=YEARLY')) {
+      if (startDate) {
+        const date = new Date(startDate);
+        const monthName = date.toLocaleDateString('en-US', { month: 'long' });
+        const dayOfMonth = date.getDate();
+        return `Yearly on ${monthName} ${dayOfMonth}`;
+      }
+      return 'Yearly';
+    }
+
+    return recurrenceRule;
+  };
+
+  console.log('=== DEFINING renderViewMode ===');
   const renderViewMode = () => {
+    // Use fetchedShift if available, otherwise fallback to shift prop
+    const shiftToDisplay = fetchedShift || shift;
+    
     if (!shiftToDisplay) {
-      return <div>No shift data available</div>;
+      return null;
     }
     
     return (
@@ -741,77 +847,184 @@ export function ShiftModal({ isOpen, onClose, mode, shift, onSave }: ShiftModalP
           )}
         </div>
 
-        {expenses.length > 0 || attachments.length > 0 ? (
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
-              <TabsTrigger value="attachments">Attachments ({attachments.length})</TabsTrigger>
-            </TabsList>
-            <TabsContent value="expenses">{renderExpensesTab()}</TabsContent>
-            <TabsContent value="attachments">{renderAttachmentsTab()}</TabsContent>
-          </Tabs>
-        ) : null}
-      </div>
-    );
+      {expenses.length > 0 || attachments.length > 0 ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
+            <TabsTrigger value="attachments">Attachments ({attachments.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="expenses">{renderExpensesTab()}</TabsContent>
+          <TabsContent value="attachments">{renderAttachmentsTab()}</TabsContent>
+        </Tabs>
+      ) : null}
+    </div>
+  );
+  console.log('=== renderViewMode DEFINED ===');
+
+  // CRITICAL: Log after all render functions are defined
+  console.log('=== AFTER ALL RENDER FUNCTIONS DEFINED ===', { isOpen, mode });
+
+  // CRITICAL: Log before computing render values
+  console.log('=== BEFORE COMPUTING RENDER VALUES ===', { isOpen, mode });
+  
+  // Determine which shift to use for display
+  const shiftToUse = fetchedShift || shift;
+
+  // For new mode, we don't need to wait for loading
+  const shouldShowLoading = isLoadingShift && (mode === 'edit' || mode === 'view' || mode === 'duplicate');
+  const shouldShowContent = !shouldShowLoading;
+
+  console.log('=== AFTER COMPUTING RENDER VALUES ===', { shouldShowLoading, shouldShowContent, shiftToUse: !!shiftToUse });
+
+  // Render form content with error handling
+  const renderFormContent = () => {
+    try {
+      console.log('renderFormContent called');
+    } catch (e) {
+      console.error('Error in renderFormContent log:', e);
+    }
+    
+    if (shouldShowLoading) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            <p className="text-gray-600">Loading shift details...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (fetchError) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="h-5 w-5 text-red-500" />
+            <div>
+              <p className="text-sm font-medium text-red-800">Failed to load shift</p>
+              <p className="text-sm text-red-600">{fetchError}</p>
+              <p className="text-xs text-red-500 mt-1">Using cached data if available.</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    try {
+      return (
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          {isReadOnly ? (
+            renderViewMode()
+          ) : (
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList>
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
+                <TabsTrigger value="attachments">Attachments ({attachments.length})</TabsTrigger>
+              </TabsList>
+              <TabsContent value="details">{renderDetailsTab()}</TabsContent>
+              <TabsContent value="expenses">{renderExpensesTab()}</TabsContent>
+              <TabsContent value="attachments">{renderAttachmentsTab()}</TabsContent>
+            </Tabs>
+          )}
+
+          <DialogFooter className="flex justify-between">
+            <div className="flex space-x-2">
+              <Button type="button" variant="outline" onClick={onClose}>
+                {isReadOnly ? 'Close' : 'Cancel'}
+              </Button>
+            </div>
+
+            <div className="flex space-x-2">
+              {!isReadOnly && (
+                <Button type="submit" disabled={isSaving || isCompleting}>
+                  {isSaving || isCompleting ? 'Saving...' : 
+                   mode === 'new' ? 'Create Shift' : 
+                   mode === 'complete' ? 'Complete Shift' : 'Save Changes'}
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
+        </form>
+      );
+    } catch (error) {
+      console.error('Error rendering form content:', error);
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-sm font-medium text-red-800">Error rendering form</p>
+          <p className="text-xs text-red-600 mt-1">{error instanceof Error ? error.message : 'Unknown error'}</p>
+          <p className="text-xs text-red-500 mt-2">Check console for details</p>
+        </div>
+      );
+    }
   };
 
-  const shouldShowLoading = isLoadingShift && (mode === 'edit' || mode === 'view' || mode === 'duplicate');
-
+  // CRITICAL: Log before return
+  console.log('=== ABOUT TO RETURN JSX ===', { isOpen, mode, shouldShowContent });
+  
+  // Early return test - if this doesn't work, the issue is with Dialog itself
   if (!isOpen) {
+    console.log('=== EARLY RETURN: isOpen is false ===');
     return null;
   }
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto sm:max-w-4xl w-full sm:w-auto">
-        <DialogHeader>
-          <DialogTitle>{getModalTitle()}</DialogTitle>
-          <DialogDescription>
-            {mode === 'view' ? 'View shift details' : mode === 'edit' ? 'Edit shift information' : mode === 'duplicate' ? 'Duplicate this shift' : mode === 'complete' ? 'Complete this shift' : 'Create a new shift'}
-          </DialogDescription>
-        </DialogHeader>
+  console.log('=== RENDERING DIALOG ===');
 
-        {shouldShowLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="flex flex-col items-center space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              <p className="text-gray-600">Loading shift details...</p>
-            </div>
+  // TEMPORARY: Minimal test to see if Dialog renders at all
+  try {
+    const dialogJSX = (
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        console.log('Dialog onOpenChange called:', open);
+        if (!open) {
+          onClose();
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto sm:max-w-4xl w-full sm:w-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {mode === 'new' && 'Add New Shift'}
+              {mode === 'edit' && 'Edit Shift'}
+              {mode === 'view' && 'View Shift'}
+              {mode === 'complete' && 'Complete Shift'}
+              {mode === 'duplicate' && 'Duplicate Shift'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {/* Debug info - remove after testing */}
+          <div className="bg-yellow-50 border border-yellow-200 p-3 mb-4 text-xs">
+            <p><strong>DEBUG:</strong> Modal isOpen: {String(isOpen)}, Mode: {mode}</p>
+            <p>ShouldShowContent: {String(shouldShowContent)}, ShouldShowLoading: {String(shouldShowLoading)}</p>
           </div>
-        ) : (
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            {isReadOnly ? (
-              renderViewMode()
-            ) : (
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList>
-                  <TabsTrigger value="details">Details</TabsTrigger>
-                  <TabsTrigger value="expenses">Expenses ({expenses.length})</TabsTrigger>
-                  <TabsTrigger value="attachments">Attachments ({attachments.length})</TabsTrigger>
-                </TabsList>
-                <TabsContent value="details">{renderDetailsTab()}</TabsContent>
-                <TabsContent value="expenses">{renderExpensesTab()}</TabsContent>
-                <TabsContent value="attachments">{renderAttachmentsTab()}</TabsContent>
-              </Tabs>
-            )}
-          </form>
-        )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} type="button">
-            {isReadOnly ? 'Close' : 'Cancel'}
-          </Button>
-          {!isReadOnly && !shouldShowLoading && (
-            <Button 
-              type="submit" 
-              onClick={form.handleSubmit(onSubmit)}
-              disabled={isSaving}
-            >
-              {isSaving ? 'Saving...' : mode === 'new' ? 'Create Shift' : 'Save Changes'}
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+          {/* TEMPORARY: Test with minimal content first */}
+          <div className="p-4">
+            <p className="text-lg font-bold text-green-600">MODAL IS RENDERING! If you see this, Dialog works.</p>
+            <p className="mt-2">Now let's test the form...</p>
+          </div>
+
+          {renderFormContent()}
+        </DialogContent>
+      </Dialog>
+    );
+    
+    console.log('=== DIALOG JSX CREATED SUCCESSFULLY ===');
+    return dialogJSX;
+  } catch (error) {
+    console.error('FATAL ERROR rendering Dialog:', error);
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg max-w-md">
+          <h2 className="text-lg font-bold text-red-600 mb-2">Render Error</h2>
+          <p className="text-sm text-gray-700">{error instanceof Error ? error.message : 'Unknown error'}</p>
+          <p className="text-xs text-gray-500 mt-2">Check console for full error</p>
+          <button 
+            onClick={onClose}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 }

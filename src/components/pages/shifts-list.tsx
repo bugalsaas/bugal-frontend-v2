@@ -328,7 +328,16 @@ export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateSh
             </Button>
             
             {/* New Shift Button */}
-            <Button onClick={onAddShift} className="whitespace-nowrap">
+            <Button 
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('New Shift button clicked, calling onAddShift');
+                onAddShift();
+              }} 
+              className="whitespace-nowrap"
+            >
               <Plus className="h-4 w-4 mr-2" />
               New Shift
             </Button>
