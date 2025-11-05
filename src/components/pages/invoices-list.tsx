@@ -225,9 +225,14 @@ export function InvoicesList({
                   {getEffectiveStatus(invoice)}
                 </Badge>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <User className="h-4 w-4" />
-                <span className="truncate">{invoice.contact.fullName}</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <User className="h-4 w-4" />
+                  <span className="truncate">{invoice.contact.fullName}</span>
+                </div>
+                <div className="text-sm font-semibold text-gray-900 ml-3 flex-shrink-0">
+                  {formatCurrency(invoice.totalInclGst)}
+                </div>
               </div>
             </div>
           </Card>
