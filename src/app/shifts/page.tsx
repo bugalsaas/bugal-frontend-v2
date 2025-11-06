@@ -191,6 +191,7 @@ export default function ShiftsPage() {
     showFilters: true, // Show filters in drawer
     showAddButton: false, // We handle buttons separately
     showAddButtonInDrawer: false,
+    hideCustomFilterInDesktop: true, // Hide filters from MainLayout desktop row
     onApply: handleApply,
     onClear: handleClear,
     onDrawerOpenChange: handleDrawerOpenChange,
@@ -290,6 +291,13 @@ export default function ShiftsPage() {
         onCompleteShift={handleCompleteShift}
         onCancelShift={handleCancelShift}
         onNotifyShift={handleNotifyShift}
+        // Filter props
+        statusFilter={statusFilter}
+        assigneeFilter={assigneeFilter}
+        contactFilter={contactFilter}
+        onStatusFilterChange={(value: ShiftStatus) => setStatusFilter(value)}
+        onAssigneeFilterChange={(value: string) => setAssigneeFilter(value)}
+        onContactFilterChange={(value: string) => setContactFilter(value)}
       />
       
       <ErrorBoundary>

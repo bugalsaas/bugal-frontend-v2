@@ -56,6 +56,13 @@ interface ShiftsListProps {
   onCompleteShift: (shift: Shift) => void;
   onCancelShift?: (shift: Shift) => void;
   onNotifyShift?: (shift: Shift) => void;
+  // Filter props
+  statusFilter?: ShiftStatus;
+  assigneeFilter?: string;
+  contactFilter?: string;
+  onStatusFilterChange?: (value: ShiftStatus) => void;
+  onAssigneeFilterChange?: (value: string) => void;
+  onContactFilterChange?: (value: string) => void;
 }
 
 export function ShiftsList({ 
@@ -77,7 +84,13 @@ export function ShiftsList({
   onDuplicateShift, 
   onCompleteShift, 
   onCancelShift, 
-  onNotifyShift 
+  onNotifyShift,
+  statusFilter,
+  assigneeFilter,
+  contactFilter,
+  onStatusFilterChange,
+  onAssigneeFilterChange,
+  onContactFilterChange,
 }: ShiftsListProps) {
   const router = useRouter();
   const { user } = useAuth();
@@ -280,117 +293,135 @@ export function ShiftsList({
     );
   }
 
+  // Use props if provided, otherwise fall back to filter from hook
+  const effectiveStatusFilter = statusFilter !== undefined ? statusFilter : (filter.status || ShiftStatus.All);
+  const effectiveAssigneeFilter = assigneeFilter !== undefined ? assigneeFilter : (filter.assignee || '-1');
+  const effectiveContactFilter = contactFilter !== undefined ? contactFilter : (filter.contact || '');
+
   return (
     <div className="space-y-6">
       {/* Mobile padding for fixed buttons bar */}
       <div className="md:hidden h-[64px]"></div>
       
-      {/* Sticky Header with Filters and New Button - Desktop only */}
-      <div className="hidden md:block sticky top-[76px] z-30 bg-white border-b border-gray-200 shadow-sm py-4 mb-6 -mx-6 px-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          {/* Filters Row */}
-          <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Status Filter */}
-            <div className="w-full">
-              <Select
-                value={filter.status || ShiftStatus.All}
-                onValueChange={(value) => setFilter({ status: value as ShiftStatus })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ShiftStatus.All}>All statuses</SelectItem>
-                  <SelectItem value={ShiftStatus.Pending}>Pending</SelectItem>
-                  <SelectItem value={ShiftStatus.Completed}>Completed</SelectItem>
-                  <SelectItem value={ShiftStatus.Cancelled}>Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Consolidated Controls Row - Desktop only */}
+      <div className="hidden md:flex items-center gap-3 flex-shrink-0 justify-end">
+        {/* Status Filter */}
+        {onStatusFilterChange ? (
+          <Select
+            value={effectiveStatusFilter}
+            onValueChange={(value) => onStatusFilterChange(value as ShiftStatus)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ShiftStatus.All}>All statuses</SelectItem>
+              <SelectItem value={ShiftStatus.Pending}>Pending</SelectItem>
+              <SelectItem value={ShiftStatus.Completed}>Completed</SelectItem>
+              <SelectItem value={ShiftStatus.Cancelled}>Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <Select
+            value={filter.status || ShiftStatus.All}
+            onValueChange={(value) => setFilter({ status: value as ShiftStatus })}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ShiftStatus.All}>All statuses</SelectItem>
+              <SelectItem value={ShiftStatus.Pending}>Pending</SelectItem>
+              <SelectItem value={ShiftStatus.Completed}>Completed</SelectItem>
+              <SelectItem value={ShiftStatus.Cancelled}>Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
 
-            {/* Assignee Filter */}
-            <div className="w-full">
-              <UserSelector
-                value={filter.assignee || '-1'}
-                onValueChange={(value) => setFilter({ assignee: value })}
-                className="w-full"
-              />
-            </div>
+        {/* Assignee Filter */}
+        {onAssigneeFilterChange ? (
+          <UserSelector
+            value={effectiveAssigneeFilter}
+            onValueChange={onAssigneeFilterChange}
+            className="w-[180px]"
+          />
+        ) : (
+          <UserSelector
+            value={filter.assignee || '-1'}
+            onValueChange={(value) => setFilter({ assignee: value })}
+            className="w-[180px]"
+          />
+        )}
 
-            {/* Contact Filter */}
-            <div className="w-full">
-              <Select
-                value={filter.contact || 'all'}
-                onValueChange={(value) => setFilter({ contact: value === 'all' ? '' : value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All contacts" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All contacts</SelectItem>
-                  {contacts?.map((contact) => (
-                    <SelectItem key={contact.id} value={contact.id}>
-                      {contact.firstName && contact.lastName
-                        ? `${contact.firstName} ${contact.lastName}`
-                        : contact.organisationName || contact.email || 'Unknown'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+        {/* Contact Filter */}
+        {onContactFilterChange ? (
+          <Select
+            value={effectiveContactFilter || 'all'}
+            onValueChange={(value) => onContactFilterChange(value === 'all' ? '' : value)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All contacts" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All contacts</SelectItem>
+              {contacts?.map((contact) => (
+                <SelectItem key={contact.id} value={contact.id}>
+                  {contact.firstName && contact.lastName
+                    ? `${contact.firstName} ${contact.lastName}`
+                    : contact.organisationName || contact.email || 'Unknown'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Select
+            value={filter.contact || 'all'}
+            onValueChange={(value) => setFilter({ contact: value === 'all' ? '' : value })}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All contacts" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All contacts</SelectItem>
+              {contacts?.map((contact) => (
+                <SelectItem key={contact.id} value={contact.id}>
+                  {contact.firstName && contact.lastName
+                    ? `${contact.firstName} ${contact.lastName}`
+                    : contact.organisationName || contact.email || 'Unknown'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
-          {/* Action Buttons Row */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            {filterCounter > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setFilter({
-                    status: ShiftStatus.All,
-                    assignee: '-1',
-                    contact: '',
-                    before: undefined,
-                    after: undefined,
-                  });
-                }}
-                className="whitespace-nowrap"
-              >
-                Clear ({filterCounter})
-              </Button>
-            )}
-            
-            {/* Today Button with Calendar Icon */}
-            <Button
-              variant="outline"
-              onClick={scrollToToday}
-              className="relative p-0 h-10 w-10 flex flex-col items-center justify-center hover:bg-blue-50 hover:border-blue-300 group"
-              title="Jump to today"
-            >
-              {/* Calendar Icon Outline */}
-              <Calendar className="h-9 w-9 text-gray-600 group-hover:text-blue-600 absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-              {/* Date Number Overlay */}
-              <span className="relative z-10 text-xs font-bold text-gray-800 group-hover:text-blue-700" style={{ marginTop: '2px' }}>
-                {getTodayDateNumber()}
-              </span>
-            </Button>
-            
-            {/* New Shift Button */}
-            <Button 
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('New Shift button clicked, calling onAddShift');
-                onAddShift();
-              }} 
-              className="whitespace-nowrap"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Shift
-            </Button>
-          </div>
-        </div>
+        {/* Today Button with Calendar Icon */}
+        <Button
+          variant="outline"
+          onClick={scrollToToday}
+          className="relative p-0 h-10 w-10 flex flex-col items-center justify-center hover:bg-blue-50 hover:border-blue-300 group"
+          title="Jump to today"
+        >
+          {/* Calendar Icon Outline */}
+          <Calendar className="h-9 w-9 text-gray-600 group-hover:text-blue-600 absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+          {/* Date Number Overlay */}
+          <span className="relative z-10 text-xs font-bold text-gray-800 group-hover:text-blue-700" style={{ marginTop: '2px' }}>
+            {getTodayDateNumber()}
+          </span>
+        </Button>
+
+        {/* New Shift Button */}
+        <Button 
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onAddShift();
+          }}
+          className="flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          New Shift
+        </Button>
       </div>
 
       {/* Load More Before Button */}
