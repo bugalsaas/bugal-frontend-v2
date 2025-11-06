@@ -196,6 +196,7 @@ export default function AgreementsPage() {
     icon: FileText,
     showAddButton: false, // Hide from header - moved to list row
     showAddButtonInDrawer: false, // Don't show in drawer on mobile
+    hideCustomFilterInDesktop: true, // Hide filters from MainLayout desktop row
     onApply: handleApply,
     onClear: handleClear,
     onDrawerOpenChange: handleDrawerOpenChange,
