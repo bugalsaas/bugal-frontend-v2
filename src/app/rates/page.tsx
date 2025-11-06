@@ -186,17 +186,19 @@ export default function RatesPage() {
     title: 'Rates',
     subtitle: 'Rates overview',
     icon: DollarSign,
-    showSearch: true,
-    showAddButton: true, // Keep for desktop header
+    showSearch: true, // Keep for mobile drawer
+    hideSearchInDesktop: true, // Hide search from MainLayout desktop row
+    showAddButton: true, // Keep for desktop header (but will be in RatesList)
     addButtonText: 'New',
     showAddButtonInDrawer: false, // Don't show in drawer on mobile
     searchPlaceholder: 'Start typing to filter results...',
-    onSearchChange: handleSearchChange,
+    onSearchChange: handleSearchChange, // For drawer search only
     onAddClick: handleAddRate,
     onApply: handleApply,
     onClear: handleClear,
     onDrawerOpenChange: handleDrawerOpenChange,
     activeFilterCount,
+    hideCustomFilterInDesktop: true, // Hide filters from MainLayout desktop row
     customFilterComponent: (
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <Select
@@ -235,6 +237,8 @@ export default function RatesPage() {
           onEditRate={handleEditRate}
           onDeleteRate={handleDeleteRate}
           onArchiveRate={handleArchiveRate}
+          searchValue={searchValue}
+          onSearchChange={(value) => setSearchValue(value)}
         />
       </div>
 

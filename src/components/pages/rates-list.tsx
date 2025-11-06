@@ -14,6 +14,7 @@ import {
   Loader2,
   AlertCircle,
   Plus,
+  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,9 @@ interface RatesListProps {
   onEditRate?: (rate: Rate) => void;
   onDeleteRate?: (rate: Rate) => void;
   onArchiveRate?: (rate: Rate) => void;
+  // Filter props for desktop
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
 }
 
 export function RatesList({ 
@@ -39,7 +43,9 @@ export function RatesList({
   onViewRate, 
   onEditRate, 
   onDeleteRate, 
-  onArchiveRate 
+  onArchiveRate,
+  searchValue: searchValueProp,
+  onSearchChange,
 }: RatesListProps) {
   // Always use hook (parent controls filters via setFilters)
   const ratesHook = useRates();
@@ -131,13 +137,59 @@ export function RatesList({
     );
   }
 
+  // Use prop search value if provided, otherwise use filter search
+  const searchValue = searchValueProp ?? filters.search ?? '';
+
   return (
     <div className="space-y-4">
-      {/* Results Summary with New Button */}
+      {/* Results Summary */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
           Showing {rates.length} of {total} rate{total !== 1 ? 's' : ''}
         </p>
+      </div>
+
+      {/* Search, Filters, and New Rate Button - Desktop only (Mobile filters are in drawer) */}
+      <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+        {/* Search Input */}
+        {onSearchChange && (
+          <div className="relative flex-1 sm:flex-initial sm:min-w-[240px]">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Start typing to filter results..."
+              className="pl-10 w-full"
+              value={searchValue}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
+          </div>
+        )}
+        {/* Type Dropdown */}
+        <div className="w-48">
+          <Select
+            value={filters.rateType || 'all'}
+            onValueChange={(v) => setFilters({ rateType: v === 'all' ? undefined : (v as RateType) })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value={RateType.Hourly}>Hourly</SelectItem>
+              <SelectItem value={RateType.Fixed}>Fixed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {/* Show Archived Checkbox */}
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="archived"
+            checked={!!filters.isArchived}
+            onCheckedChange={(v) => setFilters({ isArchived: !!v })}
+          />
+          <label htmlFor="archived" className="text-sm text-gray-700 cursor-pointer">Show archived</label>
+        </div>
+        {/* New Rate Button */}
         {onAddRate && (
           <Button 
             onClick={onAddRate}
@@ -148,41 +200,6 @@ export function RatesList({
             New Rate
           </Button>
         )}
-      </div>
-
-      {/* Filters - Desktop only (Mobile filters are in drawer) */}
-      <div className="hidden md:flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-        <div className="flex-1 flex flex-col md:flex-row gap-3">
-          <div className="md:w-48">
-            <label className="block text-xs text-gray-600 mb-1">Type</label>
-            <Select
-              value={filters.rateType || 'all'}
-              onValueChange={(v) => setFilters({ rateType: v === 'all' ? undefined : (v as RateType) })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                <SelectItem value={RateType.Hourly}>Hourly</SelectItem>
-                <SelectItem value={RateType.Fixed}>Fixed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2 mt-1 md:mt-0">
-            <Checkbox
-              id="archived"
-              checked={!!filters.isArchived}
-              onCheckedChange={(v) => setFilters({ isArchived: !!v })}
-            />
-            <label htmlFor="archived" className="text-sm text-gray-700">Show archived</label>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          {filterCounter > 0 && (
-            <Button variant="secondary" onClick={() => setFilters({ search: '', rateType: undefined, isArchived: false })}>Clear</Button>
-          )}
-        </div>
       </div>
       {/* Filter Summary - Desktop only */}
       {filterCounter > 0 && (
