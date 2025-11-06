@@ -187,18 +187,18 @@ export default function RatesPage() {
     subtitle: 'Rates overview',
     icon: DollarSign,
     showSearch: true, // Keep for mobile drawer
-    hideSearchInDesktop: true, // Hide search from MainLayout desktop row
-    showAddButton: true, // Keep for desktop header (but will be in RatesList)
+    hideSearchInDesktop: true, // Hide from MainLayout desktop row
+    showAddButton: false, // Hide from header - moved to list row
+    hideCustomFilterInDesktop: true, // Hide filters from MainLayout desktop row
     addButtonText: 'New',
     showAddButtonInDrawer: false, // Don't show in drawer on mobile
     searchPlaceholder: 'Start typing to filter results...',
-    onSearchChange: handleSearchChange, // For drawer search only
+    onSearchChange: handleSearchChange,
     onAddClick: handleAddRate,
     onApply: handleApply,
     onClear: handleClear,
     onDrawerOpenChange: handleDrawerOpenChange,
     activeFilterCount,
-    hideCustomFilterInDesktop: true, // Hide filters from MainLayout desktop row
     customFilterComponent: (
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <Select
@@ -237,8 +237,13 @@ export default function RatesPage() {
           onEditRate={handleEditRate}
           onDeleteRate={handleDeleteRate}
           onArchiveRate={handleArchiveRate}
+          // Add search and filter props
           searchValue={searchValue}
-          onSearchChange={(value) => setSearchValue(value)}
+          rateTypeFilter={rateTypeFilter}
+          isArchivedFilter={isArchivedFilter}
+          onSearchChange={(value: string) => setSearchValue(value)}
+          onRateTypeFilterChange={(value: RateType | undefined) => setRateTypeFilter(value)}
+          onArchivedFilterChange={(value: boolean) => setIsArchivedFilter(value)}
         />
       </div>
 

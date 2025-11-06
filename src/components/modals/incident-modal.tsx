@@ -194,12 +194,12 @@ export function IncidentModal({
   const shouldUseDrawer = !isDesktop;
   const modalTitle = (
     <>
-      <AlertTriangle className="h-5 w-5 text-red-500" />
-      <span>
-        {mode === 'new' && 'New Incident Report'}
-        {mode === 'edit' && 'Edit Incident Report'}
-        {mode === 'view' && 'View Incident Report'}
-      </span>
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <span>
+              {mode === 'new' && 'New Incident Report'}
+              {mode === 'edit' && 'Edit Incident Report'}
+              {mode === 'view' && 'View Incident Report'}
+            </span>
     </>
   );
 

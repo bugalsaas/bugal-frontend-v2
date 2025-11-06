@@ -31,9 +31,13 @@ interface RatesListProps {
   onEditRate?: (rate: Rate) => void;
   onDeleteRate?: (rate: Rate) => void;
   onArchiveRate?: (rate: Rate) => void;
-  // Filter props for desktop
+  // Search and filter props
   searchValue?: string;
+  rateTypeFilter?: RateType | undefined;
+  isArchivedFilter?: boolean;
   onSearchChange?: (value: string) => void;
+  onRateTypeFilterChange?: (value: RateType | undefined) => void;
+  onArchivedFilterChange?: (value: boolean) => void;
 }
 
 export function RatesList({ 
@@ -44,8 +48,12 @@ export function RatesList({
   onEditRate, 
   onDeleteRate, 
   onArchiveRate,
-  searchValue: searchValueProp,
+  searchValue,
+  rateTypeFilter,
+  isArchivedFilter,
   onSearchChange,
+  onRateTypeFilterChange,
+  onArchivedFilterChange,
 }: RatesListProps) {
   // Always use hook (parent controls filters via setFilters)
   const ratesHook = useRates();
@@ -137,76 +145,72 @@ export function RatesList({
     );
   }
 
-  // Use prop search value if provided, otherwise use filter search
-  const searchValue = searchValueProp ?? filters.search ?? '';
+  // Use props if provided, otherwise fall back to hook filters
+  const effectiveSearchValue = searchValue !== undefined ? searchValue : filters.search || '';
+  const effectiveRateTypeFilter = rateTypeFilter !== undefined ? rateTypeFilter : filters.rateType;
+  const effectiveIsArchivedFilter = isArchivedFilter !== undefined ? isArchivedFilter : filters.isArchived || false;
 
   return (
     <div className="space-y-4">
-      {/* Results Summary */}
+      {/* Results Summary with Consolidated Controls Row */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
           Showing {rates.length} of {total} rate{total !== 1 ? 's' : ''}
         </p>
+        {/* Consolidated controls row - Desktop only, aligned to the right */}
+        <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+          {/* Search input */}
+          {onSearchChange && (
+            <div className="relative flex-1 sm:flex-initial sm:min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Start typing to filter results..."
+                className="pl-10 w-full"
+                value={effectiveSearchValue}
+                onChange={(e) => onSearchChange(e.target.value)}
+              />
+            </div>
+          )}
+          {/* Type dropdown */}
+          {onRateTypeFilterChange && (
+            <Select
+              value={effectiveRateTypeFilter || 'all'}
+              onValueChange={(v) => onRateTypeFilterChange(v === 'all' ? undefined : (v as RateType))}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value={RateType.Hourly}>Hourly</SelectItem>
+                <SelectItem value={RateType.Fixed}>Fixed</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          {/* Show archived checkbox */}
+          {onArchivedFilterChange && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="archived-desktop"
+                checked={effectiveIsArchivedFilter}
+                onCheckedChange={(v) => onArchivedFilterChange(!!v)}
+              />
+              <label htmlFor="archived-desktop" className="text-sm text-gray-700 cursor-pointer whitespace-nowrap">Show archived</label>
+            </div>
+          )}
+          {/* New Rate button */}
+          {onAddRate && (
+            <Button 
+              onClick={onAddRate}
+              className="flex items-center gap-2"
+              size="sm"
+            >
+              <Plus className="h-4 w-4" />
+              New Rate
+            </Button>
+          )}
+        </div>
       </div>
-
-      {/* Search, Filters, and New Rate Button - Desktop only (Mobile filters are in drawer) */}
-      <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-        {/* Search Input */}
-        {onSearchChange && (
-          <div className="relative flex-1 sm:flex-initial sm:min-w-[240px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Start typing to filter results..."
-              className="pl-10 w-full"
-              value={searchValue}
-              onChange={(e) => onSearchChange(e.target.value)}
-            />
-          </div>
-        )}
-        {/* Type Dropdown */}
-        <div className="w-48">
-          <Select
-            value={filters.rateType || 'all'}
-            onValueChange={(v) => setFilters({ rateType: v === 'all' ? undefined : (v as RateType) })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              <SelectItem value={RateType.Hourly}>Hourly</SelectItem>
-              <SelectItem value={RateType.Fixed}>Fixed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        {/* Show Archived Checkbox */}
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="archived"
-            checked={!!filters.isArchived}
-            onCheckedChange={(v) => setFilters({ isArchived: !!v })}
-          />
-          <label htmlFor="archived" className="text-sm text-gray-700 cursor-pointer">Show archived</label>
-        </div>
-        {/* New Rate Button */}
-        {onAddRate && (
-          <Button 
-            onClick={onAddRate}
-            className="flex items-center gap-2"
-            size="sm"
-          >
-            <Plus className="h-4 w-4" />
-            New Rate
-          </Button>
-        )}
-      </div>
-      {/* Filter Summary - Desktop only */}
-      {filterCounter > 0 && (
-        <div className="hidden md:flex items-center space-x-2 text-sm text-gray-600">
-          <Badge variant="secondary">{filterCounter} filter{filterCounter > 1 ? 's' : ''} applied</Badge>
-        </div>
-      )}
 
       {/* Mobile Card View */}
       <div className="block md:hidden space-y-3">
