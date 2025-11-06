@@ -678,12 +678,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!token) throw new Error('Failed to receive token while switching organization');
       setToken(token);
       await refreshUser();
+      // Reload page to clear all state and refetch data with new organization
+      // This matches the behavior of the old platform
+      window.location.reload();
     } catch (error) {
       setState(prev => ({ ...prev, isLoading: false, error: error instanceof Error ? error.message : 'Failed to switch organization' }));
       throw error;
-    } finally {
-      setState(prev => ({ ...prev, isLoading: false }));
     }
+    // Note: finally block removed since we reload the page on success
   };
 
   // Helper function to determine if user is organization admin
