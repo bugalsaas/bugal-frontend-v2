@@ -290,7 +290,7 @@ export function MainLayout({
                       {headerConfig.customFilterComponent}
                     </div>
                   )}
-                  {headerConfig.showFilters && (
+                  {headerConfig.showFilters && !headerConfig.hideFiltersButtonInDesktop && (
                     <Button variant="outline" className="flex items-center space-x-2 flex-shrink-0" onClick={handleFilterClick}>
                       <Filter className="h-4 w-4" />
                       <span className="hidden sm:inline">Filters</span>

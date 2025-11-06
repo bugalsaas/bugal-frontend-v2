@@ -192,6 +192,7 @@ export default function ShiftsPage() {
     showAddButton: false, // We handle buttons separately
     showAddButtonInDrawer: false,
     hideCustomFilterInDesktop: true, // Hide filters from MainLayout desktop row
+    hideFiltersButtonInDesktop: true, // Hide Filters button from desktop MainLayout header
     onApply: handleApply,
     onClear: handleClear,
     onDrawerOpenChange: handleDrawerOpenChange,
@@ -253,13 +254,16 @@ export default function ShiftsPage() {
             const event = new CustomEvent('scrollToToday');
             window.dispatchEvent(event);
           }}
-          className="relative p-0 h-10 w-10 flex flex-col items-center justify-center"
+          className="relative flex items-center gap-2 px-3 h-10"
           title="Jump to today"
         >
-          <Calendar className="h-9 w-9 text-gray-600 absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-          <span className="relative z-10 text-xs font-bold text-gray-800" style={{ marginTop: '2px' }}>
-            {new Date().getDate()}
-          </span>
+          <div className="relative flex-shrink-0 h-9 w-9 flex flex-col items-center justify-center">
+            <Calendar className="h-9 w-9 text-gray-600 absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+            <span className="relative z-10 text-xs font-bold text-gray-800" style={{ marginTop: '2px' }}>
+              {new Date().getDate()}
+            </span>
+          </div>
+          <span className="text-sm font-medium">Today</span>
         </Button>
         <Button 
           type="button"

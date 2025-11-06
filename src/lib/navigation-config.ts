@@ -107,6 +107,7 @@ export interface PageHeaderConfig {
   // Desktop-only visibility controls (mobile drawer unaffected)
   hideSearchInDesktop?: boolean;
   hideCustomFilterInDesktop?: boolean;
+  hideFiltersButtonInDesktop?: boolean; // Hide Filters button from desktop MainLayout header
 }
 
 export interface MainLayoutProps {

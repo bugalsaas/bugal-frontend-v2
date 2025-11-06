@@ -398,15 +398,18 @@ export function ShiftsList({
         <Button
           variant="outline"
           onClick={scrollToToday}
-          className="relative p-0 h-10 w-10 flex flex-col items-center justify-center hover:bg-blue-50 hover:border-blue-300 group"
+          className="relative flex items-center gap-2 px-3 h-10 hover:bg-blue-50 hover:border-blue-300 group"
           title="Jump to today"
         >
-          {/* Calendar Icon Outline */}
-          <Calendar className="h-9 w-9 text-gray-600 group-hover:text-blue-600 absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-          {/* Date Number Overlay */}
-          <span className="relative z-10 text-xs font-bold text-gray-800 group-hover:text-blue-700" style={{ marginTop: '2px' }}>
-            {getTodayDateNumber()}
-          </span>
+          <div className="relative flex-shrink-0 h-9 w-9 flex flex-col items-center justify-center">
+            {/* Calendar Icon Outline */}
+            <Calendar className="h-9 w-9 text-gray-600 group-hover:text-blue-600 absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+            {/* Date Number Overlay */}
+            <span className="relative z-10 text-xs font-bold text-gray-800 group-hover:text-blue-700" style={{ marginTop: '2px' }}>
+              {getTodayDateNumber()}
+            </span>
+          </div>
+          <span className="text-sm font-medium group-hover:text-blue-700">Today</span>
         </Button>
 
         {/* New Shift Button */}

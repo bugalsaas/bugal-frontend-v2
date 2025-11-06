@@ -60,7 +60,7 @@ export default function ReportsPage() {
       icon: AlertTriangle,
       href: '/reports/incidents',
       color: 'bg-red-500',
-      badge: 'NEW',
+      badge: null,
     },
   ];
 
