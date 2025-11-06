@@ -274,7 +274,7 @@ export function MainLayout({
               {/* Search and Actions */}
               {(headerConfig.showSearch || headerConfig.showFilters || headerConfig.showAddButton || headerConfig.customFilterComponent) && (
                 <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-                  {headerConfig.showSearch && (
+                  {headerConfig.showSearch && !headerConfig.hideSearchInDesktop && (
                     <div className="relative flex-1 sm:flex-initial sm:min-w-[200px]">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
@@ -285,7 +285,7 @@ export function MainLayout({
                       />
                     </div>
                   )}
-                  {headerConfig.customFilterComponent && (
+                  {headerConfig.customFilterComponent && !headerConfig.hideCustomFilterInDesktop && (
                     <div className="w-full sm:w-auto">
                       {headerConfig.customFilterComponent}
                     </div>

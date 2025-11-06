@@ -104,6 +104,9 @@ export interface PageHeaderConfig {
   onApply?: () => void; // Callback for Apply button (if provided, shows Apply/Clear instead of Add button)
   onClear?: () => void; // Callback for Clear button
   onDrawerOpenChange?: (isOpen: boolean) => void; // Callback when drawer open state changes
+  // Desktop-only visibility controls (mobile drawer unaffected)
+  hideSearchInDesktop?: boolean;
+  hideCustomFilterInDesktop?: boolean;
 }
 
 export interface MainLayoutProps {

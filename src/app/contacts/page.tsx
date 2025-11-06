@@ -113,6 +113,7 @@ export default function ContactsPage() {
     title: "Contacts",
     subtitle: "Contacts overview",
     showSearch: true, // Show search in mobile drawer
+    hideSearchInDesktop: true, // Hide search input from MainLayout desktop row
     showAddButton: false, // Hide from header - moved to list row
     showAddButtonInDrawer: false, // Don't show in drawer on mobile
     searchPlaceholder: "Search contacts...",
@@ -121,6 +122,7 @@ export default function ContactsPage() {
     onClear: handleClear,
     onDrawerOpenChange: handleDrawerOpenChange,
     activeFilterCount,
+    hideCustomFilterInDesktop: true, // Hide filter dropdown from MainLayout desktop row
     customFilterComponent: (
       <Select
         value={drawerContactTypeFilter}
