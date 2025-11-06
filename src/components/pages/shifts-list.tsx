@@ -37,6 +37,18 @@ import { useContacts } from '@/hooks/use-contacts';
 import { UserSelector } from '@/components/ui/user-selector';
 
 interface ShiftsListProps {
+  shifts?: Shift[];
+  loading?: boolean;
+  error?: string | null;
+  total?: number;
+  hasMoreBefore?: string | undefined;
+  hasMoreAfter?: string | undefined;
+  loadMoreBefore?: (before: string) => Promise<void>;
+  loadMoreAfter?: (after: string) => Promise<void>;
+  filter?: any;
+  setFilter?: any;
+  filterCounter?: number;
+  reloadList?: () => void;
   onAddShift: () => void;
   onEditShift: (shift: Shift) => void;
   onViewShift: (shift: Shift) => void;
@@ -46,26 +58,46 @@ interface ShiftsListProps {
   onNotifyShift?: (shift: Shift) => void;
 }
 
-export function ShiftsList({ onAddShift, onEditShift, onViewShift, onDuplicateShift, onCompleteShift, onCancelShift, onNotifyShift }: ShiftsListProps) {
+export function ShiftsList({ 
+  shifts: shiftsProp,
+  loading: loadingProp,
+  error: errorProp,
+  total: totalProp,
+  hasMoreBefore: hasMoreBeforeProp,
+  hasMoreAfter: hasMoreAfterProp,
+  loadMoreBefore: loadMoreBeforeProp,
+  loadMoreAfter: loadMoreAfterProp,
+  filter: filterProp,
+  setFilter: setFilterProp,
+  filterCounter: filterCounterProp,
+  reloadList: reloadListProp,
+  onAddShift, 
+  onEditShift, 
+  onViewShift, 
+  onDuplicateShift, 
+  onCompleteShift, 
+  onCancelShift, 
+  onNotifyShift 
+}: ShiftsListProps) {
   const router = useRouter();
   const { user } = useAuth();
   const organizationTimezone = user?.organization?.timezone;
   const todayDateRef = useRef<HTMLDivElement>(null);
 
-  const {
-    data: shifts,
-    loading,
-    error,
-    total,
-    filterCounter,
-    filter,
-    setFilter,
-    reloadList,
-    hasMoreBefore,
-    hasMoreAfter,
-    loadMoreBefore,
-    loadMoreAfter,
-  } = useShifts();
+  // Use props if provided, otherwise fall back to hook
+  const shiftsHook = useShifts();
+  const shifts = shiftsProp ?? shiftsHook.data ?? [];
+  const loading = loadingProp ?? shiftsHook.loading;
+  const error = errorProp ?? shiftsHook.error;
+  const total = totalProp ?? shiftsHook.total ?? 0;
+  const hasMoreBefore = hasMoreBeforeProp ?? shiftsHook.hasMoreBefore;
+  const hasMoreAfter = hasMoreAfterProp ?? shiftsHook.hasMoreAfter;
+  const loadMoreBefore = loadMoreBeforeProp ?? shiftsHook.loadMoreBefore;
+  const loadMoreAfter = loadMoreAfterProp ?? shiftsHook.loadMoreAfter;
+  const filter = filterProp ?? shiftsHook.filter;
+  const setFilter = setFilterProp ?? shiftsHook.setFilter;
+  const filterCounter = filterCounterProp ?? shiftsHook.filterCounter;
+  const reloadList = reloadListProp ?? shiftsHook.reloadList;
 
   // Fetch contacts for the contact filter
   const { data: contacts } = useContacts({ pageSize: 100 });

@@ -23,13 +23,28 @@ export default function ShiftsPage() {
   const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'new' | 'edit' | 'view' | 'duplicate'>('new');
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
-  const { reloadList, filter, setFilter, filterCounter } = useShifts();
+  const shiftsHook = useShifts();
+  const { reloadList, filter, setFilter, filterCounter, loading: shiftsLoading, error: shiftsError, data: shifts, total: shiftsTotal, hasMoreBefore, hasMoreAfter, loadMoreBefore, loadMoreAfter } = shiftsHook;
   const { data: contacts } = useContacts({ pageSize: 100 });
 
   // Applied filters (what's actually filtering the data)
-  const [statusFilter, setStatusFilter] = useState<ShiftStatus>(filter.status || ShiftStatus.All);
-  const [assigneeFilter, setAssigneeFilter] = useState<string>(filter.assignee || '-1');
-  const [contactFilter, setContactFilter] = useState<string>(filter.contact || '');
+  // Initialize with default values, then sync with filter from hook
+  const [statusFilter, setStatusFilter] = useState<ShiftStatus>(ShiftStatus.All);
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('-1');
+  const [contactFilter, setContactFilter] = useState<string>('');
+
+  // Sync local filter state with hook's filter state when it changes
+  React.useEffect(() => {
+    if (filter.status !== undefined) {
+      setStatusFilter(filter.status || ShiftStatus.All);
+    }
+    if (filter.assignee !== undefined) {
+      setAssigneeFilter(filter.assignee || '-1');
+    }
+    if (filter.contact !== undefined) {
+      setContactFilter(filter.contact || '');
+    }
+  }, [filter.status, filter.assignee, filter.contact]);
 
   // Local state for drawer filters (not applied until Apply is clicked)
   const [drawerStatusFilter, setDrawerStatusFilter] = useState<ShiftStatus>(ShiftStatus.All);
@@ -38,11 +53,24 @@ export default function ShiftsPage() {
 
   // Update filter when applied filter values change
   React.useEffect(() => {
-    setFilter({
-      status: statusFilter !== ShiftStatus.All ? statusFilter : undefined,
-      assignee: assigneeFilter !== '-1' ? assigneeFilter : undefined,
-      contact: contactFilter && contactFilter !== '' ? contactFilter : undefined,
-    });
+    const newFilter: Partial<ShiftFilters> = {};
+    
+    // Only set status if it's not All
+    if (statusFilter !== ShiftStatus.All) {
+      newFilter.status = statusFilter;
+    }
+    
+    // Only set assignee if it's not the default
+    if (assigneeFilter !== '-1') {
+      newFilter.assignee = assigneeFilter;
+    }
+    
+    // Only set contact if it's not empty
+    if (contactFilter && contactFilter.trim() !== '') {
+      newFilter.contact = contactFilter;
+    }
+    
+    setFilter(newFilter);
   }, [statusFilter, assigneeFilter, contactFilter, setFilter]);
 
   const handleAddShift = () => {
@@ -243,6 +271,18 @@ export default function ShiftsPage() {
       </div>
 
       <ShiftsList 
+        shifts={shifts}
+        loading={shiftsLoading}
+        error={shiftsError}
+        total={shiftsTotal}
+        hasMoreBefore={hasMoreBefore}
+        hasMoreAfter={hasMoreAfter}
+        loadMoreBefore={loadMoreBefore}
+        loadMoreAfter={loadMoreAfter}
+        filter={filter}
+        setFilter={setFilter}
+        filterCounter={filterCounter}
+        reloadList={reloadList}
         onAddShift={handleAddShift}
         onEditShift={handleEditShift}
         onViewShift={handleViewShift}

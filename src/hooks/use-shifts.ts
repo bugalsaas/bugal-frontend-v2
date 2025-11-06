@@ -38,6 +38,13 @@ export function useShifts(options: UseShiftsOptions = {}) {
   useEffect(() => {
     onLoadRef.current = options.onLoad;
   }, [options.onLoad]);
+
+  // Ensure filter.assignee is always set (backend requires it)
+  useEffect(() => {
+    if (!filter.assignee || (typeof filter.assignee === 'string' && filter.assignee.trim() === '')) {
+      setFilter(prev => ({ ...prev, assignee: '-1' }));
+    }
+  }, [filter.assignee]);
   
   // Use ref to track if a fetch is in progress to prevent duplicate requests
   const isFetchingRef = useRef(false);
@@ -164,6 +171,7 @@ export function useShifts(options: UseShiftsOptions = {}) {
       setHasMoreBefore(undefined);
       setHasMoreAfter(undefined);
       lastFetchParamsRef.current = '';
+      isFetchingRef.current = false;
       return;
     }
 
@@ -183,9 +191,20 @@ export function useShifts(options: UseShiftsOptions = {}) {
       return;
     }
 
-    // Prevent duplicate fetches that are in progress
+    // If a fetch is in progress, wait a bit then check again
+    // This prevents duplicate fetches but allows retry if stuck
     if (isFetchingRef.current) {
-      return;
+      // If fetch has been stuck for more than 5 seconds, reset and retry
+      const checkStuck = setTimeout(() => {
+        if (isFetchingRef.current) {
+          console.warn('Shifts fetch appears stuck, resetting and retrying...');
+          isFetchingRef.current = false;
+          lastFetchParamsRef.current = '';
+          // Trigger a re-fetch by updating a dummy state or calling the effect again
+          // Actually, we'll just let the next render cycle handle it
+        }
+      }, 5000);
+      return () => clearTimeout(checkStuck);
     }
 
     let isCancelled = false;
@@ -275,7 +294,14 @@ export function useShifts(options: UseShiftsOptions = {}) {
   ]);
 
   const updateFilter = useCallback((newFilter: Partial<ShiftFilters>) => {
-    setFilter(prev => ({ ...prev, ...newFilter }));
+    setFilter(prev => {
+      const updated = { ...prev, ...newFilter };
+      // Ensure assignee is always set (backend requires it)
+      if (!updated.assignee) {
+        updated.assignee = '-1';
+      }
+      return updated;
+    });
   }, []);
 
   const updatePagination = useCallback((newPagination: Partial<typeof pagination>) => {

@@ -20,10 +20,6 @@ export function MobileSearchFiltersDrawer({
 }: MobileSearchFiltersDrawerProps) {
   const [searchValue, setSearchValue] = React.useState('');
 
-  // For Apply/Clear pattern, we need to sync with parent's drawer state
-  // When parent calls onSearchChange with a value (to sync), we update our local state
-  const lastSyncedValueRef = React.useRef<string>('');
-  
   // Sync search value when drawer opens/closes
   React.useEffect(() => {
     if (!isOpen) {
@@ -31,18 +27,16 @@ export function MobileSearchFiltersDrawer({
       if (!headerConfig.onApply) {
         setSearchValue('');
       }
-      lastSyncedValueRef.current = '';
     }
   }, [isOpen, headerConfig.onApply]);
-  
-  // When using Apply/Clear pattern, listen for parent-initiated syncs
-  // Parent will call onSearchChange when drawer opens to sync initial value
-  // We track this by comparing the value we receive
-  React.useEffect(() => {
-    // This is handled by the parent calling onSearchChange when drawer opens
-    // The parent's handleDrawerOpenChange will call handleSearchChange with drawerSearchValue
-    // which then calls onSearchChange, which should update our state via the onChange handler
-  }, []);
+
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value);
+    // Call parent's onSearchChange to update parent's drawer state
+    if (headerConfig.onSearchChange) {
+      headerConfig.onSearchChange(value);
+    }
+  };
 
   const handleAddClick = () => {
     if (headerConfig.onAddClick) {

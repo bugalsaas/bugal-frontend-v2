@@ -99,7 +99,7 @@ export default function ContactsPage() {
       // This will trigger onSearchChange which updates the drawer component
       handleSearchChange(searchValue);
     }
-  }, [searchValue, contactTypeFilter]);
+  }, [searchValue, contactTypeFilter, handleSearchChange]);
 
   // Calculate active filter count based on actual applied filters
   const activeFilterCount = (() => {
@@ -112,9 +112,11 @@ export default function ContactsPage() {
   const headerConfig = {
     title: "Contacts",
     subtitle: "Contacts overview",
-    showSearch: false, // Hide from header - moved to list row
+    showSearch: true, // Show search in mobile drawer
     showAddButton: false, // Hide from header - moved to list row
     showAddButtonInDrawer: false, // Don't show in drawer on mobile
+    searchPlaceholder: "Search contacts...",
+    onSearchChange: handleSearchChange, // This is for the drawer's internal search
     onApply: handleApply,
     onClear: handleClear,
     onDrawerOpenChange: handleDrawerOpenChange,
